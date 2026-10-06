@@ -1,10 +1,11 @@
 import os
 import re
+import json
 import glob
 import time
 import base64
 import requests
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ app.add_middleware(
 )
 
 DEFAULT_MODEL = "gemini-3.8-flash"
+SESSION_FILE = "active_session.json"
 
 class ChatRequest(BaseModel):
     message: str
@@ -37,6 +39,9 @@ class AutoCloseRequest(BaseModel):
     full_text: str
     api_key: Optional[str] = None
     model: Optional[str] = DEFAULT_MODEL
+
+class SaveSessionRequest(BaseModel):
+    history: List[Dict[str, Any]]
 
 def get_client(api_key: Optional[str] = None):
     key = api_key or os.getenv("GEMINI_API_KEY")
@@ -54,19 +59,16 @@ def get_main_prompt():
     return "Eres el motor narrativo de Cedar Creek 1985."
 
 def extract_chapter_number(filepath: str) -> int:
-    """Extrae el número entero de 'Capitulo X.txt' para ordenar numéricamente."""
     match = re.search(r'(\d+)', os.path.basename(filepath))
     return int(match.group(1)) if match else 0
 
 def get_recent_and_queried_canon(query: str) -> str:
-    """Ordena los capítulos por su número real y recupera los últimos dos más fragmentos clave."""
     files = glob.glob("canon/**/*.*", recursive=True)
     valid_files = [f for f in files if os.path.isfile(f) and not f.endswith(".py")]
     
     if not valid_files:
         return ""
 
-    # Ordenación numérica: 1, 2... 9, 10... 24, 25
     valid_files.sort(key=extract_chapter_number)
 
     recent_files = valid_files[-2:] if len(valid_files) >= 2 else valid_files
@@ -74,7 +76,6 @@ def get_recent_and_queried_canon(query: str) -> str:
 
     canon_blocks = []
     
-    # 1. Cargar el texto íntegro de los 2 capítulos más recientes
     for path in recent_files:
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -85,7 +86,6 @@ def get_recent_and_queried_canon(query: str) -> str:
         except Exception as e:
             print(f"Error leyendo {path}: {e}")
 
-    # 2. Búsqueda de fragmentos relevantes en los capítulos anteriores
     words = [w.lower() for w in re.findall(r'\b[a-zA-ZáéíóúÁÉÍÓÚñÑ]{4,}\b', query)]
     stopwords = {"para", "como", "pero", "este", "esta", "hacer", "ahora", "bien", "vamos", "donde", "sobre", "entre", "capitulo", "porfas"}
     keywords = [w for w in words if w not in stopwords]
@@ -142,6 +142,32 @@ def serve_home():
             return f.read()
     return "<h1>Cedar Creek Engine Activo</h1>"
 
+# --- PERSISTENCIA NUBE ENTRE DISPOSITIVOS (PC <-> CELULAR) ---
+@app.get("/api/session")
+def load_session():
+    if os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                return {"history": json.load(f)}
+        except Exception:
+            return {"history": []}
+    return {"history": []}
+
+@app.post("/api/session")
+def save_session(req: SaveSessionRequest):
+    try:
+        with open(SESSION_FILE, "w", encoding="utf-8") as f:
+            json.dump(req.history, f, ensure_ascii=False, indent=2)
+        return {"status": "saved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error guardando sesión: {e}")
+
+@app.delete("/api/session")
+def clear_session():
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
+    return {"status": "cleared"}
+
 @app.post("/api/sync-cache")
 def sync_cache(payload: Optional[ChatRequest] = None):
     files = glob.glob("canon/**/*.*", recursive=True)
@@ -192,6 +218,10 @@ def auto_close_chapter(req: AutoCloseRequest):
         )
         with open("main_instructions.txt", "w", encoding="utf-8") as f:
             f.write(new_main)
+
+    # Limpiar sesión activa al archivar
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
 
     return {
         "status": "success",
