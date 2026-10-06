@@ -3,7 +3,7 @@ import re
 import glob
 import base64
 import requests
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,8 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DEFAULT_MODEL = "gemini-3.8-flash"
-active_caches = {}
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 class ChatRequest(BaseModel):
     message: str
@@ -43,33 +42,71 @@ def get_client(api_key: Optional[str] = None):
     if not key:
         raise HTTPException(
             status_code=401, 
-            detail="Falta la API Key de Google AI Studio. Ingrésala en la app."
+            detail="Falta la API Key de Google AI Studio. Ingrésala en Config."
         )
     return genai.Client(api_key=key), key
 
-def read_canon_context():
-    main_prompt = "Eres el co-piloto narrativo de Cedar Creek 1985."
+def get_main_prompt():
     if os.path.exists("main_instructions.txt"):
         with open("main_instructions.txt", "r", encoding="utf-8") as f:
-            main_prompt = f.read()
+            return f.read()
+    return "Eres el motor narrativo de Cedar Creek 1985."
+
+def get_recent_and_queried_canon(query: str) -> str:
+    """Extrae los últimos 2 capítulos completos y busca menciones relevantes en los anteriores."""
+    files = glob.glob("canon/**/*.txt", recursive=True) + glob.glob("canon/**/*.md", recursive=True) + glob.glob("canon/*.*")
+    files = sorted(list(set([f for f in files if os.path.isfile(f) and not f.endswith(".py")])))
+    
+    if not files:
+        return ""
+
+    # 1. Tomar los 2 capítulos más recientes completos
+    recent_files = files[-2:] if len(files) >= 2 else files
+    older_files = files[:-2] if len(files) >= 2 else []
 
     canon_blocks = []
-    files = glob.glob("canon/**/*.txt", recursive=True) + glob.glob("canon/**/*.md", recursive=True) + glob.glob("canon/*.*")
-    files = sorted(list(set(files)))
     
-    for path in files:
-        if os.path.isfile(path) and not path.endswith(".py"):
+    # Cargar recientes
+    for path in recent_files:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    fname = os.path.basename(path)
+                    canon_blocks.append(f"=== [CANON RECIENTE: {fname}] ===\n{content}\n")
+        except Exception as e:
+            print(f"Error leyendo {path}: {e}")
+
+    # 2. Búsqueda por palabras clave en capítulos viejos (RAG ligero)
+    words = [w.lower() for w in re.findall(r'\b[a-zA-ZáéíóúÁÉÍÓÚñÑ]{4,}\b', query)]
+    stopwords = {"para", "como", "pero", "este", "esta", "hacer", "ahora", "bien", "vamos", "donde", "sobre", "entre"}
+    keywords = [w for w in words if w not in stopwords]
+
+    if keywords and older_files:
+        matches = []
+        for path in older_files:
             try:
                 with open(path, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    if content:
-                        filename = os.path.basename(path)
-                        canon_blocks.append(f"=== [CANON / EXPEDIENTE: {filename}] ===\n{content}\n")
-            except Exception as e:
-                print(f"Error al leer {path}: {e}")
+                    text = f.read()
+                    paragraphs = text.split("\n\n")
+                    for p in paragraphs:
+                        p_lower = p.lower()
+                        # Si coincide con al menos dos palabras clave o una específica
+                        score = sum(1 for kw in keywords if kw in p_lower)
+                        if score >= 1 and len(p.strip()) > 50:
+                            matches.append((score, os.path.basename(path), p.strip()))
+            except Exception:
+                pass
+        
+        # Ordenar por relevancia y tomar hasta los mejores 5 fragmentos históricos
+        matches.sort(key=lambda x: x[0], reverse=True)
+        top_matches = matches[:5]
+        
+        if top_matches:
+            snippets = [f"[{fn}]: {text}" for _, fn, text in top_matches]
+            canon_blocks.append("=== [FRAGMENTOS HISTÓRICOS RELEVANTES RECUPERADOS DEL CANON PASADO] ===\n" + "\n---\n".join(snippets) + "\n")
 
-    full_canon = "\n".join(canon_blocks)
-    return main_prompt, full_canon, len(canon_blocks)
+    return "\n".join(canon_blocks)
 
 def commit_to_github(token: str, owner: str, repo: str, path: str, content: str, commit_msg: str):
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
@@ -97,42 +134,22 @@ def serve_home():
     if os.path.exists("templates/index.html"):
         with open("templates/index.html", "r", encoding="utf-8") as f:
             return f.read()
-    return "<h1>Cedar Creek Engine Activo</h1><p>Falta templates/index.html</p>"
+    return "<h1>Cedar Creek Engine Activo</h1>"
 
 @app.post("/api/sync-cache")
 def sync_cache(payload: Optional[ChatRequest] = None):
-    api_key = payload.api_key if payload else None
-    model_name = payload.model if (payload and payload.model) else DEFAULT_MODEL
-    client, key = get_client(api_key)
-    
-    main_prompt, full_canon, total_files = read_canon_context()
-    if not full_canon.strip():
-        raise HTTPException(status_code=400, detail="No se encontraron archivos en /canon/.")
-
-    try:
-        cache = client.caches.create(
-            model=model_name,
-            config=types.CreateCachedContentConfig(
-                contents=[full_canon],
-                system_instruction=main_prompt,
-                ttl="86400s",
-            )
-        )
-        active_caches[(key, model_name)] = cache.name
-        return {
-            "status": "success",
-            "cache_id": cache.name,
-            "total_files": total_files,
-            "model": model_name,
-            "message": f"¡Caché montada en {model_name} con {total_files} archivos!"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creando caché: {str(e)}")
+    # En modo gratuito sin Context Caching, este endpoint solo valida archivos locales
+    files = glob.glob("canon/**/*.*", recursive=True)
+    total_files = len([f for f in files if os.path.isfile(f) and not f.endswith(".py")])
+    return {
+        "status": "success",
+        "total_files": total_files,
+        "model": payload.model if payload else DEFAULT_MODEL,
+        "message": f"Archivos verificados: {total_files} capítulos disponibles en memoria dinámica."
+    }
 
 @app.post("/api/auto-close-chapter")
 def auto_close_chapter(req: AutoCloseRequest):
-    """Extrae la continuidad, actualiza main_instructions.txt, guarda el capítulo y sincroniza."""
-    # 1. Separar prosa de continuidad si viene incluida
     continuity_match = re.search(r"═+\s*CONTINUITY STATE.*", req.full_text, re.DOTALL)
     continuity_block = ""
     prose_text = req.full_text
@@ -141,93 +158,57 @@ def auto_close_chapter(req: AutoCloseRequest):
         continuity_block = continuity_match.group(0).strip()
         prose_text = req.full_text[:continuity_match.start()].strip()
 
-    # 2. Guardar el archivo en canon/capitulo_XX.txt en GitHub
     cap_filename = f"capitulo_{req.chapter_num.zfill(2)}.txt"
     commit_to_github(
         req.github_token, req.repo_owner, req.repo_name, 
         f"canon/{cap_filename}", prose_text, 
-        f"Cierre automático: Guardar {cap_filename}"
+        f"Cierre automático: {cap_filename}"
     )
 
-    # Guardar en local del contenedor
     os.makedirs("canon", exist_ok=True)
     with open(f"canon/{cap_filename}", "w", encoding="utf-8") as f:
         f.write(prose_text)
 
-    # 3. Si hay bloque de continuidad, actualizar la Sección 15 de main_instructions.txt en GitHub
     if continuity_block and os.path.exists("main_instructions.txt"):
         with open("main_instructions.txt", "r", encoding="utf-8") as f:
             current_main = f.read()
 
-        # Reemplazar la Sección 15 conservando el resto
         pattern = r"(## 15\. ESTADO ACTUAL DE CONTINUIDAD.*?)(?=## 16\. CONFLICTO TERRITORIAL|$)"
-        replacement = f"## 15. ESTADO ACTUAL DE CONTINUIDAD (ACTUALIZADO AUTOMÁTICAMENTE)\n\n```\n{continuity_block}\n```\n\n---\n\n"
-        
+        replacement = f"## 15. ESTADO ACTUAL DE CONTINUIDAD\n\n```\n{continuity_block}\n```\n\n---\n\n"
         new_main = re.sub(pattern, replacement, current_main, flags=re.DOTALL)
         
         commit_to_github(
             req.github_token, req.repo_owner, req.repo_name,
             "main_instructions.txt", new_main,
-            f"Cierre automático: Actualizar continuidad Cap {req.chapter_num}"
+            f"Cierre automático: Continuidad Cap {req.chapter_num}"
         )
         with open("main_instructions.txt", "w", encoding="utf-8") as f:
             f.write(new_main)
 
-    # 4. Re-sincronizar la memoria caché de Gemini de una vez
-    model_name = req.model or DEFAULT_MODEL
-    client, key = get_client(req.api_key)
-    main_prompt, full_canon, total_files = read_canon_context()
-
-    try:
-        cache = client.caches.create(
-            model=model_name,
-            config=types.CreateCachedContentConfig(
-                contents=[full_canon],
-                system_instruction=main_prompt,
-                ttl="86400s",
-            )
-        )
-        active_caches[(key, model_name)] = cache.name
-    except Exception as e:
-        print(f"Advertencia al re-sincronizar caché: {e}")
-
     return {
         "status": "success",
-        "message": f"Capítulo {req.chapter_num} archivado, Sección 15 actualizada y Caché refrescada con éxito."
+        "message": f"Capítulo {req.chapter_num} archivado y Sección 15 actualizada."
     }
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    client, key = get_client(req.api_key)
+    client, _ = get_client(req.api_key)
     model_name = req.model or DEFAULT_MODEL
-    cache_id = active_caches.get((key, model_name))
+    main_prompt = get_main_prompt()
     
-    if not cache_id:
-        main_prompt, full_canon, _ = read_canon_context()
-        if full_canon.strip():
-            cache = client.caches.create(
-                model=model_name,
-                config=types.CreateCachedContentConfig(
-                    contents=[full_canon],
-                    system_instruction=main_prompt,
-                    ttl="86400s",
-                )
-            )
-            cache_id = cache.name
-            active_caches[(key, model_name)] = cache_id
+    # Extraer contexto canónico relevante al vuelo
+    dynamic_canon = get_recent_and_queried_canon(req.message)
+    
+    system_instruction_full = f"{main_prompt}\n\n{dynamic_canon}"
 
     try:
-        if cache_id:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=req.message,
-                config=types.GenerateContentConfig(cached_content=cache_id)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=req.message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction_full
             )
-        else:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=req.message
-            )
+        )
         return {"response": response.text}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error Gemini: {str(e)}")
