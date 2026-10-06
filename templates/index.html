@@ -103,6 +103,24 @@
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
 
+    // Sincronización automática silenciosa al entrar
+    window.addEventListener('DOMContentLoaded', () => {
+      const lastSync = localStorage.getItem('LAST_SYNC_TIME');
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+
+      // Si tiene clave guardada y nunca sincronizó o ya pasaron más de 20 horas
+      if (savedKey) {
+        if (!lastSync || (now - parseInt(lastSync, 10)) > (20 * 60 * 60 * 1000)) {
+          syncCache(true); // Sincronización silenciosa
+        } else {
+          const badge = document.getElementById('cache-badge');
+          badge.innerText = `Caché Activa (${getSelectedModel()})`;
+          badge.className = "text-[11px] text-emerald-400 font-semibold";
+        }
+      }
+    });
+
     function toggleConfigModal() {
       document.getElementById('modal-config').classList.toggle('hidden');
     }
@@ -120,16 +138,20 @@
 
       toggleConfigModal();
       alert("Configuración guardada.");
+      syncCache(true);
     }
 
     function getSelectedModel() {
       return document.getElementById('model-select').value;
     }
 
-    async function syncCache() {
+    async function syncCache(silent = false) {
       if (!savedKey) {
-        toggleConfigModal();
-        return alert("Ingresa tu API Key de Gemini.");
+        if (!silent) {
+          toggleConfigModal();
+          alert("Ingresa tu API Key de Gemini.");
+        }
+        return;
       }
 
       const btn = document.getElementById('btn-sync');
@@ -148,12 +170,13 @@
         if (res.ok) {
           badge.innerText = `Caché Activa (${data.model}): ${data.total_files} archivos`;
           badge.className = "text-[11px] text-emerald-400 font-semibold";
-          alert(data.message);
+          localStorage.setItem('LAST_SYNC_TIME', Date.now().toString());
+          if (!silent) alert(data.message);
         } else {
-          alert("Error: " + data.detail);
+          if (!silent) alert("Error: " + data.detail);
         }
       } catch (err) {
-        alert("Error de conexión: " + err.message);
+        if (!silent) alert("Error de conexión: " + err.message);
       } finally {
         btn.disabled = false;
         btn.innerText = "⚡ Sincronizar";
@@ -210,7 +233,7 @@
         return alert("Configura tu GitHub Token en ⚙️ Config.");
       }
 
-      const chapterNum = prompt("Número del capítulo que vas a cerrar (ej. 22):", "22");
+      const chapterNum = prompt("Número del capítulo que vas a cerrar (ej. 22):", "26");
       if (!chapterNum) return;
 
       const confirmAction = confirm(`¿Cerrar y archivar automáticamente el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
@@ -233,6 +256,7 @@
         const data = await res.json();
         if (res.ok) {
           alert("¡Todo listo!\n" + data.message);
+          localStorage.setItem('LAST_SYNC_TIME', Date.now().toString());
           location.reload();
         } else {
           alert("Error: " + data.detail);
