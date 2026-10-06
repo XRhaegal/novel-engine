@@ -2,40 +2,51 @@
 <html lang="es" class="h-full bg-stone-950 text-stone-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cedar Creek 1985 - Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Space Grotesk', sans-serif; }
     .novel-font { font-family: 'Merriweather', serif; }
+    .mono-font { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Scrollbar sobrio estilo vintage */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0c0a09; }
+    ::-webkit-scrollbar-thumb { background: #292524; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #44403c; }
+
     @keyframes bounce-delay {
       0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
       40% { transform: scale(1.0); opacity: 1; }
     }
     .typing-dot {
       display: inline-block;
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background-color: #f59e0b;
+      background-color: #d97706;
       animation: bounce-delay 1.4s infinite ease-in-out both;
     }
     .typing-dot:nth-child(1) { animation-delay: -0.32s; }
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased">
+<body class="h-full flex flex-col bg-stone-950 antialiased overflow-hidden select-none">
 
   <!-- Header Superior -->
-  <header class="bg-stone-900/90 backdrop-blur border-b border-stone-800 px-4 py-3 flex items-center justify-between z-10 gap-2">
+  <header class="bg-stone-900/95 backdrop-blur border-b border-stone-800 px-5 py-2.5 flex items-center justify-between z-20 shrink-0">
     <div class="flex items-center gap-3">
-      <div id="status-orb" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+      <button onclick="toggleSidebar()" title="Alternar panel lateral" class="p-1.5 text-stone-400 hover:text-amber-400 hover:bg-stone-800 rounded-lg transition">
+        📑
+      </button>
+      <div id="status-orb" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
       <div>
-        <h1 class="text-sm font-bold tracking-wider uppercase text-amber-500">Cedar Creek 1985</h1>
-        <p id="cache-badge" class="text-[11px] text-emerald-400 font-semibold">Canon Dinámico Activo</p>
+        <h1 class="text-xs font-bold tracking-widest uppercase text-amber-500">Cedar Creek 1985</h1>
+        <p id="cache-badge" class="text-[10px] text-emerald-400 mono-font">Motor Dinámico Activo</p>
       </div>
     </div>
 
@@ -47,7 +58,7 @@
         <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
       </select>
 
-      <button onclick="clearSessionHistory()" title="Vaciar la pantalla para iniciar un capítulo limpio" class="p-1.5 text-stone-400 hover:text-rose-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition flex items-center gap-1">
+      <button onclick="clearSessionHistory()" title="Vaciar la pantalla para iniciar un capítulo limpio" class="p-1.5 text-stone-400 hover:text-rose-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
         🧹 Nueva Sesión
       </button>
       <button onclick="toggleConfigModal()" class="p-1.5 text-stone-400 hover:text-amber-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
@@ -60,33 +71,76 @@
     </div>
   </header>
 
-  <!-- Feed de Lectura -->
-  <main id="chat-stream" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
-    <div id="welcome-card" class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
-      <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
-      El texto se guarda solo en tu navegador. Puedes refrescar con calma. Cuando pidas cerrar el capítulo formalmente, aquí aparecerán los botones de archivo.
-    </div>
-  </main>
+  <!-- Área de Trabajo Principal (Sidebar + Feed de Lectura) -->
+  <div class="flex-1 flex overflow-hidden relative">
 
-  <!-- Entrada de Texto -->
-  <footer class="bg-stone-900 border-t border-stone-800 p-3 max-w-4xl mx-auto w-full">
-    <div class="flex gap-2 items-end">
-      <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción, diálogo o instrucción..." class="flex-1 bg-stone-950 border border-stone-700 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font"></textarea>
-      <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-4 py-3 rounded-xl text-sm transition h-[52px] flex items-center justify-center min-w-[90px]">
-        <span id="send-label">Enviar</span>
-        <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
-      </button>
-    </div>
-  </footer>
+    <!-- Panel Lateral Izquierdo (Continuidad & Info) -->
+    <aside id="sidebar" class="w-80 bg-stone-900/60 border-r border-stone-800/80 p-4 overflow-y-auto hidden lg:flex flex-col gap-4 shrink-0 text-xs">
+      <div>
+        <h2 class="text-[11px] font-bold tracking-wider uppercase text-amber-500/80 mb-2">Cuaderno de Campo</h2>
+        <div class="bg-stone-900/80 border border-stone-800 rounded-xl p-3 space-y-2 text-stone-300">
+          <div class="flex justify-between border-b border-stone-800 pb-1.5">
+            <span class="text-stone-500">Protagonista:</span>
+            <span class="font-semibold text-stone-200">Edson</span>
+          </div>
+          <div class="flex justify-between border-b border-stone-800 pb-1.5">
+            <span class="text-stone-500">Época:</span>
+            <span class="mono-font text-stone-200">Dic 1985</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-stone-500">Ubicación:</span>
+            <span class="text-stone-200">Cedar Creek, WA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col min-h-0">
+        <h2 class="text-[11px] font-bold tracking-wider uppercase text-amber-500/80 mb-2">Consejos de Dirección</h2>
+        <div class="bg-stone-900/40 border border-stone-800/60 rounded-xl p-3 text-stone-400 space-y-2 text-[11px] leading-relaxed overflow-y-auto">
+          <p>• Especifica siempre si hablas, examinas o avanzas físicamente.</p>
+          <p>• Cuando la escena termine y quieras archivar, dile al modelo: <em class="text-amber-400/90">"Cierra el capítulo con el CONTINUITY STATE"</em>.</p>
+          <p>• Si el modelo tarda, Render está cargando los archivos recientes de respaldo.</p>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-stone-800 text-[10px] text-stone-500 text-center mono-font">
+        Cedar Creek Engine v3.1
+      </div>
+    </aside>
+
+    <!-- Columna Central: Página de Lectura (Estilo Libro) -->
+    <main class="flex-1 flex flex-col h-full bg-stone-950 overflow-hidden">
+      
+      <!-- Contenedor con scroll del libro -->
+      <div id="chat-stream" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-3xl mx-auto w-full">
+        <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/30 rounded-2xl p-5 text-xs text-stone-400 leading-relaxed text-center">
+          <span class="text-amber-500 font-bold block mb-1 text-sm tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
+          El texto se guarda de forma persistente en tu navegador. Puedes escribir el siguiente turno cuando gustes.
+        </div>
+      </div>
+
+      <!-- Barra de Entrada Inferior -->
+      <footer class="bg-stone-900/90 backdrop-blur border-t border-stone-800/80 p-3 shrink-0">
+        <div class="max-w-3xl mx-auto flex gap-2.5 items-end">
+          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción, diálogo o instrucción..." class="flex-1 bg-stone-950/80 border border-stone-700/80 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500/80 resize-none novel-font leading-relaxed"></textarea>
+          <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-4 py-3 rounded-xl text-xs uppercase tracking-wider transition h-[52px] flex items-center justify-center min-w-[95px] shrink-0">
+            <span id="send-label">Enviar</span>
+            <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
+          </button>
+        </div>
+      </footer>
+    </main>
+
+  </div>
 
   <!-- Toast Notificaciones -->
-  <div id="toast" class="fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
+  <div id="toast" class="fixed bottom-20 right-5 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
     <span class="text-emerald-400 text-base">✔</span>
     <span id="toast-text">Notificación</span>
   </div>
 
   <!-- Modal Configuración -->
-  <div id="modal-config" class="hidden fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+  <div id="modal-config" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-md w-full space-y-3">
       <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wide">Configuración (BYOK)</h3>
       <p class="text-[11px] text-stone-400">Datos guardados únicamente en tu navegador.</p>
@@ -130,7 +184,6 @@
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
 
-    // Restauración de historial al recargar la página
     let sessionHistory = [];
     try {
       sessionHistory = JSON.parse(localStorage.getItem('CC_SESSION_HISTORY') || '[]');
@@ -147,7 +200,21 @@
         const container = document.getElementById('chat-stream');
         container.scrollTop = container.scrollHeight;
       }
+
+      // Atajo de teclado: Enter para enviar, Shift+Enter para salto de línea
+      const pBox = document.getElementById('prompt-box');
+      pBox.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendTurn();
+        }
+      });
     });
+
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('hidden');
+    }
 
     function saveHistoryToStorage() {
       localStorage.setItem('CC_SESSION_HISTORY', JSON.stringify(sessionHistory));
@@ -159,8 +226,8 @@
       localStorage.removeItem('CC_SESSION_HISTORY');
       const container = document.getElementById('chat-stream');
       container.innerHTML = `
-        <div id="welcome-card" class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
-          <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
+        <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/30 rounded-2xl p-5 text-xs text-stone-400 leading-relaxed text-center">
+          <span class="text-amber-500 font-bold block mb-1 text-sm tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
           Nueva sesión iniciada. Escribe tus acciones cuando desees.
         </div>
       `;
@@ -172,8 +239,8 @@
       const toastText = document.getElementById('toast-text');
       toastText.innerText = text;
       toast.className = isError 
-        ? "fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-rose-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2"
-        : "fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2";
+        ? "fixed bottom-20 right-5 max-w-sm bg-stone-900 border border-rose-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2"
+        : "fixed bottom-20 right-5 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2";
 
       setTimeout(() => {
         toast.className = toast.className.replace('opacity-100 translate-y-0', 'opacity-0 translate-y-4 pointer-events-none');
@@ -196,7 +263,7 @@
       localStorage.setItem('GH_REPO', ghRepo);
 
       toggleConfigModal();
-      showToast("Configuración guardada en tu navegador.");
+      showToast("Configuración guardada.");
     }
 
     function getSelectedModel() {
@@ -245,9 +312,9 @@
       const container = document.getElementById('chat-stream');
       const bubble = document.createElement('div');
       bubble.id = 'thinking-bubble';
-      bubble.className = "bg-stone-900/50 border border-stone-800/80 rounded-2xl p-4 mr-2 shadow-sm flex items-center gap-3";
+      bubble.className = "bg-stone-900/40 border border-stone-800/80 rounded-2xl p-4 shadow-sm flex items-center gap-3";
       bubble.innerHTML = `
-        <span class="text-xs font-bold uppercase tracking-wider text-amber-500">Cedar Creek AI</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-500">Cedar Creek AI</span>
         <div class="flex items-center gap-1.5 py-1">
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
@@ -321,16 +388,21 @@
 
       const container = document.getElementById('chat-stream');
       const wrapper = document.createElement('div');
-      wrapper.className = role === 'user' 
-        ? "bg-stone-900 border border-stone-800 rounded-2xl p-4 ml-6 shadow-sm"
-        : "bg-stone-900/50 border border-stone-800/80 rounded-2xl p-4 mr-2 shadow-sm space-y-3";
+      
+      if (role === 'user') {
+        wrapper.className = "bg-stone-900/70 border border-stone-800 rounded-2xl p-4 ml-8 md:ml-16 shadow-sm";
+      } else if (role === 'assistant') {
+        wrapper.className = "bg-stone-900/30 border border-stone-800/60 rounded-2xl p-5 md:p-6 shadow-sm space-y-3";
+      } else {
+        wrapper.className = "bg-rose-950/20 border border-rose-900/50 rounded-2xl p-4 shadow-sm text-rose-300";
+      }
 
       let actionsHtml = '';
       const isChapterClosing = text.includes("CONTINUITY STATE") || text.includes("FIN DEL CAPÍTULO") || text.includes("═ CONTINUITY");
 
       if (role === 'assistant' && isChapterClosing) {
         actionsHtml = `
-          <div class="pt-3 mt-2 border-t border-stone-800/80 flex justify-end gap-2 flex-wrap animate-fade-in">
+          <div class="pt-3 mt-3 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
             <button onclick="downloadCompleteSession()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1.5">
               📥 Descargar Capítulo Completo (.txt)
             </button>
@@ -341,10 +413,10 @@
         `;
       }
 
-      const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-emerald-400');
+      const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-amber-400/90');
       wrapper.innerHTML = `
-        <div class="text-xs font-bold uppercase tracking-wider ${roleColor} mb-1">${sender}</div>
-        <div class="text-sm text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div class="text-[10px] font-bold uppercase tracking-wider ${roleColor} mb-2">${sender}</div>
+        <div class="text-[15px] text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
@@ -381,7 +453,7 @@
         return showToast("Configura tu GitHub Token en ⚙️ Config.", true);
       }
 
-      const chapterNum = prompt("Número del capítulo que vas a archivar (ej. 26):", "26");
+      const chapterNum = prompt("Número del capítulo que vas a archivar:", "26");
       if (!chapterNum) return;
 
       const confirmAction = confirm(`¿Cerrar y archivar el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
