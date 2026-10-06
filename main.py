@@ -1,5 +1,7 @@
 import os
 import glob
+import base64
+import requests
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
@@ -19,8 +21,6 @@ app.add_middleware(
 )
 
 DEFAULT_MODEL = "gemini-3.8-flash"
-
-# Cachés activas organizadas por api_key y modelo: { (api_key, model_name): cache_name }
 active_caches = {}
 
 class ChatRequest(BaseModel):
@@ -28,8 +28,13 @@ class ChatRequest(BaseModel):
     api_key: Optional[str] = None
     model: Optional[str] = DEFAULT_MODEL
 
-class ContinuityUpdateRequest(BaseModel):
-    new_entry: str
+class SaveCanonRequest(BaseModel):
+    github_token: str
+    repo_owner: str
+    repo_name: str
+    filename: str
+    content: str
+    commit_message: Optional[str] = None
 
 def get_client(api_key: Optional[str] = None):
     key = api_key or os.getenv("GEMINI_API_KEY")
@@ -41,7 +46,7 @@ def get_client(api_key: Optional[str] = None):
     return genai.Client(api_key=key), key
 
 def read_canon_context():
-    main_prompt = "Eres el co-piloto narrativo de Cedar Creek 1985. Mantén la ambientación rigurosa de 1985, coherencia total y la voz de los personajes."
+    main_prompt = "Eres el co-piloto narrativo de Cedar Creek 1985."
     if os.path.exists("main_instructions.txt"):
         with open("main_instructions.txt", "r", encoding="utf-8") as f:
             main_prompt = f.read()
@@ -103,6 +108,50 @@ def sync_cache(payload: Optional[ChatRequest] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando la caché: {str(e)}")
+
+@app.post("/api/save-canon-file")
+def save_canon_file(req: SaveCanonRequest):
+    """Guarda o actualiza un archivo en GitHub dentro de canon/"""
+    clean_name = os.path.basename(req.filename.strip())
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido.")
+    
+    path = f"canon/{clean_name}"
+    url = f"https://api.github.com/repos/{req.repo_owner}/{req.repo_name}/contents/{path}"
+    headers = {
+        "Authorization": f"token {req.github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Verificar si el archivo ya existe para obtener su SHA (requerido para actualizar)
+    sha = None
+    get_res = requests.get(url, headers=headers)
+    if get_res.status_code == 200:
+        sha = get_res.json().get("sha")
+
+    encoded_content = base64.b64encode(req.content.encode("utf-8")).decode("utf-8")
+    commit_msg = req.commit_message or f"Actualizar canon: {clean_name}"
+
+    data = {
+        "message": commit_msg,
+        "content": encoded_content
+    }
+    if sha:
+        data["sha"] = sha
+
+    put_res = requests.put(url, headers=headers, json=data)
+    if put_res.status_code in [200, 201]:
+        # Guardar también en la sesión local actual de Render
+        os.makedirs("canon", exist_ok=True)
+        with open(f"canon/{clean_name}", "w", encoding="utf-8") as f:
+            f.write(req.content)
+            
+        return {"status": "success", "message": f"Guardado '{clean_name}' en GitHub exitosamente."}
+    else:
+        raise HTTPException(
+            status_code=put_res.status_code, 
+            detail=f"GitHub API Error: {put_res.text}"
+        )
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
