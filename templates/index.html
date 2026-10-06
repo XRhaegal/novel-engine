@@ -15,7 +15,7 @@
 </head>
 <body class="h-full flex flex-col antialiased select-none">
 
-  <!-- Encabezado Superior -->
+  <!-- Header -->
   <header class="bg-stone-900/90 backdrop-blur border-b border-stone-800 px-4 py-3 flex items-center justify-between z-10 gap-2">
     <div class="flex items-center gap-3">
       <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -26,14 +26,13 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <!-- Selector de Modelo -->
       <select id="model-select" class="bg-stone-800 border border-stone-700 text-stone-200 text-xs rounded-lg px-2.5 py-2 focus:border-amber-500 focus:outline-none">
         <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
         <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
       </select>
 
       <button onclick="toggleConfigModal()" class="p-2 text-stone-400 hover:text-amber-400 text-xs bg-stone-800 rounded-lg border border-stone-700">
-        ⚙️ Llave API
+        ⚙️ Config
       </button>
       <button onclick="syncCache()" id="btn-sync" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow transition">
         ⚡ Sincronizar
@@ -41,15 +40,19 @@
     </div>
   </header>
 
-  <!-- Área de Mensajes -->
+  <!-- Feed -->
   <main id="chat-stream" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
       <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
-      Elige tu modelo (3.8 o 3.7 Flash) y presiona <strong>"⚡ Sincronizar"</strong> para montar los expedientes del canon en la caché de Google AI Studio.
+      Cada respuesta generada tiene dos opciones directas:
+      <ul class="list-disc pl-5 mt-1 space-y-1">
+        <li><strong>📥 Descargar .txt</strong> en tu teléfono o PC.</li>
+        <li><strong>💾 Subir a Canon</strong> para guardarlo permanentemente en tu repo de GitHub.</li>
+      </ul>
     </div>
   </main>
 
-  <!-- Barra de Entrada Inferior -->
+  <!-- Input -->
   <footer class="bg-stone-900 border-t border-stone-800 p-3 max-w-4xl mx-auto w-full">
     <div class="flex gap-2 items-end">
       <textarea id="prompt-box" rows="2" placeholder="Escribe el siguiente hito, diálogo o instrucción..." class="flex-1 bg-stone-950 border border-stone-700 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font"></textarea>
@@ -59,36 +62,68 @@
     </div>
   </footer>
 
-  <!-- Modal API Key -->
-  <div id="modal-config" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-    <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-md w-full space-y-4">
-      <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wide">Configurar Google AI Studio API Key</h3>
-      <p class="text-xs text-stone-300 leading-relaxed">Tu clave se guarda localmente en el navegador (BYOK).</p>
-      <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 text-xs text-stone-100 focus:border-amber-500 focus:outline-none font-mono">
-      <div class="flex justify-end gap-2">
-        <button onclick="toggleConfigModal()" class="px-3 py-2 text-xs text-stone-400 hover:text-stone-200">Cancelar</button>
-        <button onclick="saveApiKey()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl">Guardar</button>
+  <!-- Modal Configuración -->
+  <div id="modal-config" class="hidden fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+    <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-md w-full space-y-3">
+      <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wide">Configuración (BYOK)</h3>
+      <p class="text-[11px] text-stone-400">Tus datos se guardan únicamente en la memoria local de tu dispositivo.</p>
+      
+      <div>
+        <label class="block text-xs text-stone-300 mb-1">Google AI Studio API Key:</label>
+        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-xs text-stone-100 focus:border-amber-500 font-mono">
+      </div>
+
+      <div>
+        <label class="block text-xs text-stone-300 mb-1">GitHub Personal Access Token (PAT):</label>
+        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-xs text-stone-100 focus:border-amber-500 font-mono">
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs text-stone-300 mb-1">Usuario GitHub:</label>
+          <input type="text" id="input-gh-owner" value="XRhaegal" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-300 mb-1">Repositorio:</label>
+          <input type="text" id="input-gh-repo" value="novel-engine" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="toggleConfigModal()" class="px-3 py-2 text-xs text-stone-400 hover:text-stone-200">Cerrar</button>
+        <button onclick="saveSettings()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl">Guardar</button>
       </div>
     </div>
   </div>
 
   <script>
     let savedKey = localStorage.getItem('GEMINI_USER_KEY') || '';
-    if (savedKey) {
-      document.getElementById('input-api-key').value = savedKey;
-    }
+    let ghToken = localStorage.getItem('GH_TOKEN') || '';
+    let ghOwner = localStorage.getItem('GH_OWNER') || 'XRhaegal';
+    let ghRepo = localStorage.getItem('GH_REPO') || 'novel-engine';
+
+    document.getElementById('input-api-key').value = savedKey;
+    document.getElementById('input-gh-token').value = ghToken;
+    document.getElementById('input-gh-owner').value = ghOwner;
+    document.getElementById('input-gh-repo').value = ghRepo;
 
     function toggleConfigModal() {
       document.getElementById('modal-config').classList.toggle('hidden');
     }
 
-    function saveApiKey() {
-      const val = document.getElementById('input-api-key').value.trim();
-      if (!val) return alert("Ingresa una clave válida.");
-      localStorage.setItem('GEMINI_USER_KEY', val);
-      savedKey = val;
+    function saveSettings() {
+      savedKey = document.getElementById('input-api-key').value.trim();
+      ghToken = document.getElementById('input-gh-token').value.trim();
+      ghOwner = document.getElementById('input-gh-owner').value.trim();
+      ghRepo = document.getElementById('input-gh-repo').value.trim();
+
+      localStorage.setItem('GEMINI_USER_KEY', savedKey);
+      localStorage.setItem('GH_TOKEN', ghToken);
+      localStorage.setItem('GH_OWNER', ghOwner);
+      localStorage.setItem('GH_REPO', ghRepo);
+
       toggleConfigModal();
-      alert("API Key guardada localmente.");
+      alert("Configuración guardada en tu navegador.");
     }
 
     function getSelectedModel() {
@@ -98,7 +133,7 @@
     async function syncCache() {
       if (!savedKey) {
         toggleConfigModal();
-        return alert("Primero ingresa tu API Key.");
+        return alert("Ingresa tu API Key de Gemini primero.");
       }
 
       const btn = document.getElementById('btn-sync');
@@ -173,6 +208,43 @@
       URL.revokeObjectURL(link.href);
     }
 
+    async function uploadToCanon(content) {
+      if (!ghToken) {
+        toggleConfigModal();
+        return alert("Debes configurar tu GitHub Token en el menú de engranaje (⚙️) para subir archivos.");
+      }
+
+      const defaultName = `capitulo_${new Date().toISOString().slice(0, 10)}.txt`;
+      const filename = prompt("Nombre del archivo para la carpeta canon/ (ej. capitulo_15.txt o fichas.txt):", defaultName);
+      if (!filename) return;
+
+      try {
+        const res = await fetch('/api/save-canon-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            github_token: ghToken,
+            repo_owner: ghOwner,
+            repo_name: ghRepo,
+            filename: filename,
+            content: content,
+            commit_message: `Añadir/actualizar ${filename} vía Engine Web`
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("¡Guardado en GitHub exitosamente!\nRecuerda picar a '⚡ Sincronizar' para meterlo a la caché.");
+        } else {
+          alert("Error al subir a GitHub: " + data.detail);
+        }
+      } catch (err) {
+        alert("Error de conexión con el backend: " + err.message);
+      }
+    }
+
+    // Almacenamos respuestas generadas para descargarlas o subirlas de forma segura
+    window.generatedResponses = [];
+
     function appendMessage(sender, text, role) {
       const container = document.getElementById('chat-stream');
       const wrapper = document.createElement('div');
@@ -182,11 +254,16 @@
 
       let actionsHtml = '';
       if (role === 'assistant') {
-        const escapedContent = encodeURIComponent(text);
+        const msgId = window.generatedResponses.length;
+        window.generatedResponses.push(text);
+
         actionsHtml = `
-          <div class="pt-2 border-t border-stone-800 flex justify-end">
-            <button onclick="downloadAsTxt(decodeURIComponent('${escapedContent}'))" class="bg-stone-800 hover:bg-stone-700 text-amber-400 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans">
+          <div class="pt-2 border-t border-stone-800 flex justify-end gap-2">
+            <button onclick="downloadAsTxt(window.generatedResponses[${msgId}])" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1">
               📥 Descargar .txt
+            </button>
+            <button onclick="uploadToCanon(window.generatedResponses[${msgId}])" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-xs px-3 py-1.5 rounded-lg border border-amber-500/40 transition font-sans flex items-center gap-1 font-semibold">
+              💾 Subir a Canon (GitHub)
             </button>
           </div>
         `;
