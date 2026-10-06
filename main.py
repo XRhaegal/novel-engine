@@ -1,9 +1,10 @@
 import os
 import re
 import glob
+import time
 import base64
 import requests
-from typing import Optional, List
+from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,7 +54,7 @@ def get_main_prompt():
     return "Eres el motor narrativo de Cedar Creek 1985."
 
 def get_recent_and_queried_canon(query: str) -> str:
-    """Extrae los últimos 2 capítulos completos y busca menciones relevantes en los anteriores."""
+    """Extrae los últimos 2 capítulos completos y busca fragmentos clave en capítulos viejos."""
     files = glob.glob("canon/**/*.txt", recursive=True) + glob.glob("canon/**/*.md", recursive=True) + glob.glob("canon/*.*")
     files = sorted(list(set([f for f in files if os.path.isfile(f) and not f.endswith(".py")])))
     
@@ -66,7 +67,6 @@ def get_recent_and_queried_canon(query: str) -> str:
 
     canon_blocks = []
     
-    # Cargar recientes
     for path in recent_files:
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -77,7 +77,7 @@ def get_recent_and_queried_canon(query: str) -> str:
         except Exception as e:
             print(f"Error leyendo {path}: {e}")
 
-    # 2. Búsqueda por palabras clave en capítulos viejos (RAG ligero)
+    # 2. Búsqueda por palabras clave en capítulos viejos
     words = [w.lower() for w in re.findall(r'\b[a-zA-ZáéíóúÁÉÍÓÚñÑ]{4,}\b', query)]
     stopwords = {"para", "como", "pero", "este", "esta", "hacer", "ahora", "bien", "vamos", "donde", "sobre", "entre"}
     keywords = [w for w in words if w not in stopwords]
@@ -91,14 +91,12 @@ def get_recent_and_queried_canon(query: str) -> str:
                     paragraphs = text.split("\n\n")
                     for p in paragraphs:
                         p_lower = p.lower()
-                        # Si coincide con al menos dos palabras clave o una específica
                         score = sum(1 for kw in keywords if kw in p_lower)
                         if score >= 1 and len(p.strip()) > 50:
                             matches.append((score, os.path.basename(path), p.strip()))
             except Exception:
                 pass
         
-        # Ordenar por relevancia y tomar hasta los mejores 5 fragmentos históricos
         matches.sort(key=lambda x: x[0], reverse=True)
         top_matches = matches[:5]
         
@@ -138,14 +136,13 @@ def serve_home():
 
 @app.post("/api/sync-cache")
 def sync_cache(payload: Optional[ChatRequest] = None):
-    # En modo gratuito sin Context Caching, este endpoint solo valida archivos locales
     files = glob.glob("canon/**/*.*", recursive=True)
     total_files = len([f for f in files if os.path.isfile(f) and not f.endswith(".py")])
     return {
         "status": "success",
         "total_files": total_files,
         "model": payload.model if payload else DEFAULT_MODEL,
-        "message": f"Archivos verificados: {total_files} capítulos disponibles en memoria dinámica."
+        "message": f"Canon validado: {total_files} capítulos disponibles en memoria dinámica."
     }
 
 @app.post("/api/auto-close-chapter")
@@ -196,19 +193,24 @@ def chat(req: ChatRequest):
     model_name = req.model or DEFAULT_MODEL
     main_prompt = get_main_prompt()
     
-    # Extraer contexto canónico relevante al vuelo
     dynamic_canon = get_recent_and_queried_canon(req.message)
-    
     system_instruction_full = f"{main_prompt}\n\n{dynamic_canon}"
 
-    try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=req.message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction_full
+    # Reintento ante saturación de demanda temporal (503)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=req.message,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction_full
+                )
             )
-        )
-        return {"response": response.text}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error Gemini: {str(e)}")
+            return {"response": response.text}
+        except Exception as e:
+            err_str = str(e)
+            if ("503" in err_str or "UNAVAILABLE" in err_str) and attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            raise HTTPException(status_code=500, detail=f"Error Gemini: {err_str}")
