@@ -27,46 +27,51 @@
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased select-none">
+<body class="h-full flex flex-col antialiased">
 
-  <!-- Header -->
+  <!-- Header Superior -->
   <header class="bg-stone-900/90 backdrop-blur border-b border-stone-800 px-4 py-3 flex items-center justify-between z-10 gap-2">
     <div class="flex items-center gap-3">
       <div id="status-orb" class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
       <div>
         <h1 class="text-sm font-bold tracking-wider uppercase text-amber-500">Cedar Creek 1985</h1>
-        <p id="cache-badge" class="text-[11px] text-emerald-400 font-semibold">Motor Dinámico Activo</p>
+        <p id="cache-badge" class="text-[11px] text-emerald-400 font-semibold">Canon Dinámico Activo</p>
       </div>
     </div>
 
     <div class="flex items-center gap-2">
-     <select id="model-select" class="bg-stone-800 border border-stone-700 text-stone-200 text-xs rounded-lg px-2.5 py-2 focus:border-amber-500 focus:outline-none">
+      <select id="model-select" class="bg-stone-800 border border-stone-700 text-stone-200 text-xs rounded-lg px-2 py-1.5 focus:border-amber-500 focus:outline-none">
         <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
-        <option value="gemini-3.8-pro">Gemini 3.8 Pro</option>
+        <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
       </select>
 
-      <button onclick="toggleConfigModal()" class="p-2 text-stone-400 hover:text-amber-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
+      <button onclick="clearSessionHistory()" title="Vaciar la pantalla para iniciar un capítulo limpio" class="p-1.5 text-stone-400 hover:text-rose-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition flex items-center gap-1">
+        🧹 Nueva Sesión
+      </button>
+      <button onclick="toggleConfigModal()" class="p-1.5 text-stone-400 hover:text-amber-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
         ⚙️ Config
       </button>
-      <button onclick="syncCache()" id="btn-sync" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs px-3 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+      <button onclick="syncCache()" id="btn-sync" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1.5">
         <span id="sync-spinner" class="hidden animate-spin">🔄</span>
         <span id="sync-text">⚡ Verificar Canon</span>
       </button>
     </div>
   </header>
 
-  <!-- Feed -->
+  <!-- Feed de Lectura -->
   <main id="chat-stream" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
-    <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
+    <div id="welcome-card" class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
       <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
-      Escribe tus acciones y decisiones. Cuando cierres capítulo con su bloque CONTINUITY STATE, usa el botón <strong>"⚡ Cerrar y Archivar Capítulo"</strong>.
+      El texto se guarda solo en tu navegador. Puedes refrescar con calma. Cuando pidas cerrar el capítulo formalmente, aquí aparecerán los botones de archivo.
     </div>
   </main>
 
-  <!-- Input -->
+  <!-- Entrada de Texto -->
   <footer class="bg-stone-900 border-t border-stone-800 p-3 max-w-4xl mx-auto w-full">
     <div class="flex gap-2 items-end">
-      <textarea id="prompt-box" rows="2" placeholder="Escribe el siguiente hito, diálogo o instrucción..." class="flex-1 bg-stone-950 border border-stone-700 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font"></textarea>
+      <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción, diálogo o instrucción..." class="flex-1 bg-stone-950 border border-stone-700 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font"></textarea>
       <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-4 py-3 rounded-xl text-sm transition h-[52px] flex items-center justify-center min-w-[90px]">
         <span id="send-label">Enviar</span>
         <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
@@ -77,7 +82,7 @@
   <!-- Toast Notificaciones -->
   <div id="toast" class="fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
     <span class="text-emerald-400 text-base">✔</span>
-    <span id="toast-text">Sincronización completada.</span>
+    <span id="toast-text">Notificación</span>
   </div>
 
   <!-- Modal Configuración -->
@@ -124,6 +129,43 @@
     document.getElementById('input-gh-token').value = ghToken;
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
+
+    // Restauración de historial al recargar la página
+    let sessionHistory = [];
+    try {
+      sessionHistory = JSON.parse(localStorage.getItem('CC_SESSION_HISTORY') || '[]');
+    } catch(e) {
+      sessionHistory = [];
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (sessionHistory.length > 0) {
+        document.getElementById('welcome-card').classList.add('hidden');
+        sessionHistory.forEach(item => {
+          renderMessageDom(item.sender, item.text, item.role, false);
+        });
+        const container = document.getElementById('chat-stream');
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+
+    function saveHistoryToStorage() {
+      localStorage.setItem('CC_SESSION_HISTORY', JSON.stringify(sessionHistory));
+    }
+
+    function clearSessionHistory() {
+      if (!confirm("¿Deseas vaciar la pantalla para iniciar un nuevo capítulo?")) return;
+      sessionHistory = [];
+      localStorage.removeItem('CC_SESSION_HISTORY');
+      const container = document.getElementById('chat-stream');
+      container.innerHTML = `
+        <div id="welcome-card" class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
+          <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
+          Nueva sesión iniciada. Escribe tus acciones cuando desees.
+        </div>
+      `;
+      showToast("Pantalla despejada.");
+    }
 
     function showToast(text, isError = false) {
       const toast = document.getElementById('toast');
@@ -185,7 +227,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          badge.innerText = `Canon Activo: ${data.total_files} capítulos`;
+          badge.innerText = `Canon: ${data.total_files} caps (Último: ${data.latest_chapter})`;
           showToast(data.message);
         } else {
           showToast("Error: " + data.detail, true);
@@ -267,10 +309,65 @@
       }
     }
 
-    function downloadAsTxt(content) {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "_");
-      const filename = `Cedar_Creek_${timestamp}.txt`;
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    function appendMessage(sender, text, role) {
+      sessionHistory.push({ sender, text, role, time: Date.now() });
+      saveHistoryToStorage();
+      renderMessageDom(sender, text, role, true);
+    }
+
+    function renderMessageDom(sender, text, role, scroll = true) {
+      const welcome = document.getElementById('welcome-card');
+      if (welcome) welcome.classList.add('hidden');
+
+      const container = document.getElementById('chat-stream');
+      const wrapper = document.createElement('div');
+      wrapper.className = role === 'user' 
+        ? "bg-stone-900 border border-stone-800 rounded-2xl p-4 ml-6 shadow-sm"
+        : "bg-stone-900/50 border border-stone-800/80 rounded-2xl p-4 mr-2 shadow-sm space-y-3";
+
+      let actionsHtml = '';
+      const isChapterClosing = text.includes("CONTINUITY STATE") || text.includes("FIN DEL CAPÍTULO") || text.includes("═ CONTINUITY");
+
+      if (role === 'assistant' && isChapterClosing) {
+        actionsHtml = `
+          <div class="pt-3 mt-2 border-t border-stone-800/80 flex justify-end gap-2 flex-wrap animate-fade-in">
+            <button onclick="downloadCompleteSession()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1.5">
+              📥 Descargar Capítulo Completo (.txt)
+            </button>
+            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs px-3 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans flex items-center gap-1.5 font-semibold">
+              ⚡ Cerrar y Archivar en GitHub
+            </button>
+          </div>
+        `;
+      }
+
+      const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-emerald-400');
+      wrapper.innerHTML = `
+        <div class="text-xs font-bold uppercase tracking-wider ${roleColor} mb-1">${sender}</div>
+        <div class="text-sm text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        ${actionsHtml}
+      `;
+      container.appendChild(wrapper);
+      if (scroll) container.scrollTop = container.scrollHeight;
+    }
+
+    function getLatestAssistantBlock() {
+      for (let i = sessionHistory.length - 1; i >= 0; i--) {
+        if (sessionHistory[i].role === 'assistant') {
+          return sessionHistory[i].text;
+        }
+      }
+      return "";
+    }
+
+    function downloadCompleteSession() {
+      const fullProse = sessionHistory
+        .filter(m => m.role === 'assistant')
+        .map(m => m.text)
+        .join("\n\n---\n\n");
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `Cedar_Creek_Capitulo_${timestamp}.txt`;
+      const blob = new Blob([fullProse], { type: 'text/plain;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = filename;
@@ -284,10 +381,10 @@
         return showToast("Configura tu GitHub Token en ⚙️ Config.", true);
       }
 
-      const chapterNum = prompt("Número del capítulo que vas a cerrar (ej. 26):", "26");
+      const chapterNum = prompt("Número del capítulo que vas a archivar (ej. 26):", "26");
       if (!chapterNum) return;
 
-      const confirmAction = confirm(`¿Cerrar y archivar automáticamente el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
+      const confirmAction = confirm(`¿Cerrar y archivar el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
       if (!confirmAction) return;
 
       try {
@@ -306,7 +403,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showToast("¡Capítulo archivado y memoria refrescada!");
+          showToast("¡Capítulo archivado en GitHub con éxito!");
           setTimeout(() => location.reload(), 1500);
         } else {
           showToast("Error: " + data.detail, true);
@@ -314,42 +411,6 @@
       } catch (err) {
         showToast("Fallo de conexión: " + err.message, true);
       }
-    }
-
-    window.generatedResponses = [];
-
-    function appendMessage(sender, text, role) {
-      const container = document.getElementById('chat-stream');
-      const wrapper = document.createElement('div');
-      wrapper.className = role === 'user' 
-        ? "bg-stone-900 border border-stone-800 rounded-2xl p-4 ml-6 shadow-sm"
-        : "bg-stone-900/50 border border-stone-800/80 rounded-2xl p-4 mr-2 shadow-sm space-y-3";
-
-      let actionsHtml = '';
-      if (role === 'assistant') {
-        const msgId = window.generatedResponses.length;
-        window.generatedResponses.push(text);
-
-        actionsHtml = `
-          <div class="pt-2 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
-            <button onclick="downloadAsTxt(window.generatedResponses[${msgId}])" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1">
-              📥 Descargar .txt
-            </button>
-            <button onclick="autoArchiveChapter(window.generatedResponses[${msgId}])" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs px-3 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans flex items-center gap-1 font-semibold">
-              ⚡ Cerrar y Archivar Capítulo
-            </button>
-          </div>
-        `;
-      }
-
-      const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-emerald-400');
-      wrapper.innerHTML = `
-        <div class="text-xs font-bold uppercase tracking-wider ${roleColor} mb-1">${sender}</div>
-        <div class="text-sm text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
-        ${actionsHtml}
-      `;
-      container.appendChild(wrapper);
-      container.scrollTop = container.scrollHeight;
     }
   </script>
 </body>
