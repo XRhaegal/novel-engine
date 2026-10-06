@@ -2,8 +2,8 @@
 <html lang="es" class="h-full bg-stone-950 text-stone-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Cedar Creek 1985 - Studio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cedar Creek 1985</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
@@ -13,10 +13,8 @@
     .novel-font { font-family: 'Merriweather', serif; }
     .mono-font { font-family: 'JetBrains Mono', monospace; }
     
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0c0a09; }
-    ::-webkit-scrollbar-thumb { background: #292524; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #44403c; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #292524; border-radius: 2px; }
 
     @keyframes bounce-delay {
       0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
@@ -24,8 +22,8 @@
     }
     .typing-dot {
       display: inline-block;
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background-color: #d97706;
       animation: bounce-delay 1.4s infinite ease-in-out both;
@@ -34,142 +32,103 @@
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
   </style>
 </head>
-<body class="h-full flex flex-col bg-stone-950 antialiased overflow-hidden select-none">
+<body class="h-full flex flex-col bg-stone-950 antialiased overflow-hidden">
 
   <!-- Header Superior -->
-  <header class="bg-stone-900/95 backdrop-blur border-b border-stone-800 px-3 md:px-5 py-2.5 flex items-center justify-between z-20 shrink-0 gap-2">
-    <div class="flex items-center gap-2 md:gap-3">
-      <button onclick="toggleSidebar()" title="Alternar panel de notas" class="p-1.5 text-stone-400 hover:text-amber-400 hover:bg-stone-800 rounded-lg transition">
-        📑
-      </button>
-      <div id="status-orb" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-      <div>
-        <h1 class="text-xs font-bold tracking-widest uppercase text-amber-500">Cedar Creek 1985</h1>
-        <p id="cache-badge" class="text-[10px] text-emerald-400 mono-font truncate max-w-[140px] md:max-w-none">Sincronizado</p>
-      </div>
+  <header class="bg-stone-900/95 backdrop-blur border-b border-stone-800 px-4 py-2.5 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-2">
+      <div id="status-orb" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+      <span class="text-xs font-bold tracking-widest uppercase text-amber-500">Cedar Creek 1985</span>
+      <span id="cache-badge" class="hidden sm:inline-block text-[10px] text-emerald-400 mono-font ml-2">Sincronizado</span>
     </div>
 
-    <div class="flex items-center gap-1.5 md:gap-2">
-      <select id="model-select" class="bg-stone-800 border border-stone-700 text-stone-200 text-xs rounded-lg px-2 py-1.5 focus:border-amber-500 focus:outline-none">
-        <option value="gemini-3.8-flash" selected>3.8 Flash</option>
-        <option value="gemini-3.7-flash">3.7 Flash</option>
-        <option value="gemini-3.5-flash-lite">3.5 Lite</option>
-        <option value="gemini-3.1-pro-preview">3.1 Pro</option>
-      </select>
-
-      <button onclick="clearSessionHistory()" title="Vaciar pantalla y empezar nuevo capítulo" class="p-1.5 text-stone-400 hover:text-rose-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
-        🧹
-      </button>
-      <button onclick="toggleConfigModal()" class="p-1.5 text-stone-400 hover:text-amber-400 text-xs bg-stone-800 rounded-lg border border-stone-700 transition">
+    <!-- Acciones Header -->
+    <div class="flex items-center gap-1.5">
+      <button onclick="toggleConfigModal()" title="Configuración" class="p-2 text-stone-400 hover:text-amber-400 hover:bg-stone-800 rounded-lg transition text-xs flex items-center justify-center">
         ⚙️
       </button>
-      <button onclick="syncCache()" id="btn-sync" class="bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs px-2.5 md:px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
-        <span id="sync-spinner" class="hidden animate-spin">🔄</span>
-        <span id="sync-text" class="hidden md:inline">⚡ Canon</span>
-        <span class="md:hidden">⚡</span>
+      <button onclick="toggleMobileMenu()" title="Menú de herramientas" class="p-2 text-stone-300 hover:text-amber-400 bg-stone-800 rounded-lg transition text-xs flex items-center gap-1 font-semibold">
+        <span>Opciones</span> ▾
       </button>
     </div>
   </header>
 
-  <!-- Área de Trabajo Principal -->
-  <div class="flex-1 flex overflow-hidden relative">
-
-    <!-- Panel Lateral Retráctil (Info & Guía) -->
-    <aside id="sidebar" class="w-72 bg-stone-900/80 backdrop-blur border-r border-stone-800 p-4 overflow-y-auto hidden flex flex-col gap-4 shrink-0 text-xs absolute lg:static inset-y-0 left-0 z-30 shadow-2xl lg:shadow-none">
-      <div class="flex justify-between items-center border-b border-stone-800 pb-2">
-        <h2 class="text-[11px] font-bold tracking-wider uppercase text-amber-500">Notas de Continuidad</h2>
-        <button onclick="toggleSidebar()" class="lg:hidden text-stone-500 hover:text-stone-300">✕</button>
-      </div>
-
-      <div class="bg-stone-900 border border-stone-800 rounded-xl p-3 space-y-2 text-stone-300">
-        <div class="flex justify-between border-b border-stone-800/60 pb-1.5">
-          <span class="text-stone-500">Protagonista:</span>
-          <span class="font-semibold text-stone-200">Edson</span>
-        </div>
-        <div class="flex justify-between border-b border-stone-800/60 pb-1.5">
-          <span class="text-stone-500">Línea Temporal:</span>
-          <span class="mono-font text-stone-200">Dic 1985</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">Ubicación:</span>
-          <span class="text-stone-200">Cedar Creek, WA</span>
-        </div>
-      </div>
-
-      <div class="flex-1 flex flex-col min-h-0">
-        <h2 class="text-[11px] font-bold tracking-wider uppercase text-stone-400 mb-1.5">Indicaciones de Cierre</h2>
-        <div class="bg-stone-900/40 border border-stone-800/60 rounded-xl p-3 text-stone-400 space-y-2 text-[11px] leading-relaxed overflow-y-auto">
-          <p>• Escribe en PC o teléfono: los cambios se sincronizan en la nube.</p>
-          <p>• Para terminar el capítulo dile: <strong class="text-amber-400">"Cierra el capítulo y genera el CONTINUITY STATE"</strong>.</p>
-          <p>• Los botones de guardado a GitHub aparecerán automáticamente al final.</p>
-        </div>
-      </div>
-
-      <div class="pt-2 border-t border-stone-800 text-[10px] text-stone-500 text-center mono-font">
-        Cedar Creek Studio v3.2
-      </div>
-    </aside>
-
-    <!-- Columna Central: Cuaderno de Lectura -->
-    <main class="flex-1 flex flex-col h-full bg-stone-950 overflow-hidden">
-      
-      <div id="chat-stream" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-3xl mx-auto w-full">
-        <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/30 rounded-2xl p-5 text-xs text-stone-400 leading-relaxed text-center">
-          <span class="text-amber-500 font-bold block mb-1 text-sm tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
-          Sesión conectada en la nube. Puedes escribir aquí o desde tu celular sin perder nada.
-        </div>
-      </div>
-
-      <!-- Barra de Entrada Inferior -->
-      <footer class="bg-stone-900/90 backdrop-blur border-t border-stone-800/80 p-3 shrink-0">
-        <div class="max-w-3xl mx-auto flex gap-2 items-end">
-          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción, diálogo o instrucción..." class="flex-1 bg-stone-950/80 border border-stone-700/80 rounded-xl p-3 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500/80 resize-none novel-font leading-relaxed"></textarea>
-          <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-4 py-3 rounded-xl text-xs uppercase tracking-wider transition h-[52px] flex items-center justify-center min-w-[85px] md:min-w-[95px] shrink-0">
-            <span id="send-label">Enviar</span>
-            <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
-          </button>
-        </div>
-      </footer>
-    </main>
-
+  <!-- Menú Desplegable Móvil / Herramientas -->
+  <div id="tools-menu" class="hidden absolute top-12 right-4 z-40 bg-stone-900 border border-stone-800 rounded-xl p-3 shadow-2xl flex flex-col gap-2.5 w-64">
+    <div>
+      <label class="block text-[10px] text-stone-400 uppercase tracking-wider mb-1">Modelo de IA</label>
+      <select id="model-select" class="w-full bg-stone-950 border border-stone-700 text-stone-200 text-xs rounded-lg px-2.5 py-2 focus:border-amber-500 focus:outline-none">
+        <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
+        <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+      </select>
+    </div>
+    <div class="flex gap-2 pt-1 border-t border-stone-800">
+      <button onclick="syncCache(); toggleMobileMenu();" class="flex-1 bg-emerald-800 hover:bg-emerald-700 text-stone-100 text-xs py-2 rounded-lg font-semibold transition">
+        ⚡ Canon
+      </button>
+      <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-stone-800 hover:bg-rose-900/60 text-stone-300 hover:text-rose-200 text-xs py-2 rounded-lg transition">
+        🧹 Nueva Sesión
+      </button>
+    </div>
   </div>
 
-  <!-- Toast Notificaciones -->
-  <div id="toast" class="fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
-    <span class="text-emerald-400 text-base">✔</span>
+  <!-- Feed Principal de Lectura -->
+  <main class="flex-1 flex flex-col h-full bg-stone-950 overflow-hidden relative">
+    <div id="chat-stream" class="flex-1 overflow-y-auto px-4 py-5 space-y-5 max-w-2xl mx-auto w-full">
+      <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/40 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed text-center">
+        <span class="text-amber-500 font-bold block mb-1 tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
+        Escribe con tranquilidad: pulsa <span class="text-stone-300 font-mono text-[11px]">Enter</span> para crear párrafos y el botón para enviar. Usa 📋 para copiar o 🗑️ para descartar turnos.
+      </div>
+    </div>
+
+    <!-- Barra de Escritura Inferior -->
+    <footer class="bg-stone-900/95 backdrop-blur border-t border-stone-800 px-3 py-2.5 shrink-0 safe-bottom">
+      <div class="max-w-2xl mx-auto flex gap-2 items-end">
+        <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo (Enter para nuevo párrafo)..." class="flex-1 bg-stone-950 border border-stone-700/80 rounded-xl p-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font leading-relaxed"></textarea>
+        <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-3.5 py-3 rounded-xl text-xs uppercase tracking-wider transition h-[48px] flex items-center justify-center shrink-0">
+          <span id="send-label">Enviar</span>
+          <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
+        </button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Notificaciones Flotantes -->
+  <div id="toast" class="fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 text-center">
     <span id="toast-text">Notificación</span>
   </div>
 
   <!-- Modal Configuración -->
-  <div id="modal-config" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-    <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-md w-full space-y-3">
-      <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wide">Configuración (BYOK)</h3>
-      <p class="text-[11px] text-stone-400">Datos guardados en tu navegador actual.</p>
+  <div id="modal-config" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-sm w-full space-y-3">
+      <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wide">Configuración</h3>
       
       <div>
-        <label class="block text-xs text-stone-300 mb-1">Google AI Studio API Key:</label>
-        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-xs text-stone-100 focus:border-amber-500 font-mono">
+        <label class="block text-[11px] text-stone-300 mb-1">Google AI Studio API Key:</label>
+        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100 focus:border-amber-500 font-mono">
       </div>
 
       <div>
-        <label class="block text-xs text-stone-300 mb-1">GitHub Personal Access Token (PAT):</label>
-        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2.5 text-xs text-stone-100 focus:border-amber-500 font-mono">
+        <label class="block text-[11px] text-stone-300 mb-1">GitHub Token (PAT):</label>
+        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100 focus:border-amber-500 font-mono">
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-xs text-stone-300 mb-1">Usuario GitHub:</label>
+          <label class="block text-[11px] text-stone-300 mb-1">Usuario:</label>
           <input type="text" id="input-gh-owner" value="XRhaegal" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
         </div>
         <div>
-          <label class="block text-xs text-stone-300 mb-1">Repositorio:</label>
+          <label class="block text-[11px] text-stone-300 mb-1">Repo:</label>
           <input type="text" id="input-gh-repo" value="novel-engine" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
         </div>
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="toggleConfigModal()" class="px-3 py-2 text-xs text-stone-400 hover:text-stone-200">Cerrar</button>
-        <button onclick="saveSettings()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs px-4 py-2 rounded-xl">Guardar</button>
+        <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200">Cerrar</button>
+        <button onclick="saveSettings()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs px-3.5 py-1.5 rounded-xl">Guardar</button>
       </div>
     </div>
   </div>
@@ -187,7 +146,6 @@
 
     let sessionHistory = [];
 
-    // Cargar sesión remota desde Render (Nube) al abrir la página
     async function loadRemoteSession() {
       try {
         const res = await fetch('/api/session');
@@ -195,27 +153,35 @@
           const data = await res.json();
           if (data.history && data.history.length > 0) {
             sessionHistory = data.history;
-            const stream = document.getElementById('chat-stream');
-            stream.innerHTML = '';
-            sessionHistory.forEach(item => {
-              renderMessageDom(item.sender, item.text, item.role, false);
-            });
-            stream.scrollTop = stream.scrollHeight;
+            renderAllHistory();
             return;
           }
         }
-      } catch (e) {
-        console.log("Modo local fallback");
-      }
+      } catch (e) {}
 
-      // Si no hay sesión remota, revisar local
       const local = localStorage.getItem('CC_SESSION_HISTORY');
       if (local) {
         try {
           sessionHistory = JSON.parse(local);
-          sessionHistory.forEach(item => renderMessageDom(item.sender, item.text, item.role, false));
+          renderAllHistory();
         } catch(e) {}
       }
+    }
+
+    function renderAllHistory() {
+      const stream = document.getElementById('chat-stream');
+      stream.innerHTML = '';
+      if (sessionHistory.length === 0) {
+        stream.innerHTML = `
+          <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/40 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed text-center">
+            <span class="text-amber-500 font-bold block mb-1 tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
+            Escribe con tranquilidad: pulsa <span class="text-stone-300 font-mono text-[11px]">Enter</span> para crear párrafos y el botón para enviar. Usa 📋 para copiar o 🗑️ para descartar turnos.
+          </div>
+        `;
+        return;
+      }
+      sessionHistory.forEach((item, idx) => renderMessageDom(item.sender, item.text, item.role, idx, false));
+      stream.scrollTop = stream.scrollHeight;
     }
 
     async function syncSessionToServer() {
@@ -232,34 +198,31 @@
     window.addEventListener('DOMContentLoaded', () => {
       loadRemoteSession();
 
+      // Atajo: Ctrl+Enter o Cmd+Enter para enviar rápido en PC si quieres, Enter normal solo salta línea
       const pBox = document.getElementById('prompt-box');
       pBox.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           sendTurn();
         }
       });
     });
 
-    function toggleSidebar() {
-      const sb = document.getElementById('sidebar');
-      sb.classList.toggle('hidden');
+    function toggleMobileMenu() {
+      document.getElementById('tools-menu').classList.toggle('hidden');
+    }
+
+    function toggleConfigModal() {
+      document.getElementById('modal-config').classList.toggle('hidden');
     }
 
     async function clearSessionHistory() {
-      if (!confirm("¿Deseas vaciar la sesión activa tanto en la PC como en el teléfono?")) return;
+      if (!confirm("¿Deseas vaciar la pantalla para iniciar un nuevo capítulo?")) return;
       sessionHistory = [];
       localStorage.removeItem('CC_SESSION_HISTORY');
       try { await fetch('/api/session', { method: 'DELETE' }); } catch(e) {}
-
-      const container = document.getElementById('chat-stream');
-      container.innerHTML = `
-        <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/30 rounded-2xl p-5 text-xs text-stone-400 leading-relaxed text-center">
-          <span class="text-amber-500 font-bold block mb-1 text-sm tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
-          Nueva sesión iniciada en la nube. Escribe cuando desees.
-        </div>
-      `;
-      showToast("Sesión vaciada en todos los dispositivos.");
+      renderAllHistory();
+      showToast("Sesión vaciada.");
     }
 
     function showToast(text, isError = false) {
@@ -267,16 +230,12 @@
       const toastText = document.getElementById('toast-text');
       toastText.innerText = text;
       toast.className = isError 
-        ? "fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-rose-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2"
-        : "fixed bottom-20 right-4 max-w-sm bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-100 translate-y-0 z-50 flex items-center gap-2";
+        ? "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-rose-500 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-100 z-50 text-center"
+        : "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-emerald-500 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-100 z-50 text-center";
 
       setTimeout(() => {
-        toast.className = toast.className.replace('opacity-100 translate-y-0', 'opacity-0 translate-y-4 pointer-events-none');
-      }, 4000);
-    }
-
-    function toggleConfigModal() {
-      document.getElementById('modal-config').classList.toggle('hidden');
+        toast.className = toast.className.replace('opacity-100', 'opacity-0 pointer-events-none');
+      }, 3500);
     }
 
     function saveSettings() {
@@ -291,7 +250,7 @@
       localStorage.setItem('GH_REPO', ghRepo);
 
       toggleConfigModal();
-      showToast("Configuración guardada en este dispositivo.");
+      showToast("Configuración guardada.");
     }
 
     function getSelectedModel() {
@@ -304,35 +263,21 @@
         return showToast("Ingresa tu API Key de Gemini primero.", true);
       }
 
-      const btn = document.getElementById('btn-sync');
-      const spinner = document.getElementById('sync-spinner');
-      const txt = document.getElementById('sync-text');
-      const badge = document.getElementById('cache-badge');
-      const model = getSelectedModel();
-
-      btn.disabled = true;
-      spinner.classList.remove('hidden');
-      txt.innerText = "...";
-
+      showToast("Verificando canon en Render...");
       try {
         const res = await fetch('/api/sync-cache', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: "sync", api_key: savedKey, model: model })
+          body: JSON.stringify({ message: "sync", api_key: savedKey, model: getSelectedModel() })
         });
         const data = await res.json();
         if (res.ok) {
-          badge.innerText = `${data.total_files} caps (${data.latest_chapter})`;
           showToast(data.message);
         } else {
           showToast("Error: " + data.detail, true);
         }
       } catch (err) {
         showToast("Error de conexión: " + err.message, true);
-      } finally {
-        btn.disabled = false;
-        spinner.classList.add('hidden');
-        txt.innerText = "⚡ Canon";
       }
     }
 
@@ -340,15 +285,15 @@
       const container = document.getElementById('chat-stream');
       const bubble = document.createElement('div');
       bubble.id = 'thinking-bubble';
-      bubble.className = "bg-stone-900/40 border border-stone-800/80 rounded-2xl p-4 shadow-sm flex items-center gap-3";
+      bubble.className = "bg-stone-900/40 border border-stone-800/80 rounded-2xl p-3.5 flex items-center gap-2.5";
       bubble.innerHTML = `
         <span class="text-[10px] font-bold uppercase tracking-wider text-amber-500">Cedar Creek AI</span>
-        <div class="flex items-center gap-1.5 py-1">
+        <div class="flex items-center gap-1">
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
         </div>
-        <span class="text-xs text-stone-500 novel-font italic">redactando escena...</span>
+        <span class="text-xs text-stone-500 novel-font italic">redactando...</span>
       `;
       container.appendChild(bubble);
       container.scrollTop = container.scrollHeight;
@@ -407,10 +352,29 @@
     function appendMessage(sender, text, role) {
       sessionHistory.push({ sender, text, role, time: Date.now() });
       syncSessionToServer();
-      renderMessageDom(sender, text, role, true);
+      const idx = sessionHistory.length - 1;
+      renderMessageDom(sender, text, role, idx, true);
     }
 
-    function renderMessageDom(sender, text, role, scroll = true) {
+    function copyMessage(idx) {
+      if (sessionHistory[idx]) {
+        navigator.clipboard.writeText(sessionHistory[idx].text).then(() => {
+          showToast("Mensaje copiado al portapapeles 📋");
+        }).catch(() => {
+          showToast("No se pudo copiar", true);
+        });
+      }
+    }
+
+    function deleteMessage(idx) {
+      if (!confirm("¿Eliminar este mensaje del historial?")) return;
+      sessionHistory.splice(idx, 1);
+      syncSessionToServer();
+      renderAllHistory();
+      showToast("Mensaje eliminado 🗑️");
+    }
+
+    function renderMessageDom(sender, text, role, idx, scroll = true) {
       const welcome = document.getElementById('welcome-card');
       if (welcome) welcome.classList.add('hidden');
 
@@ -418,11 +382,11 @@
       const wrapper = document.createElement('div');
       
       if (role === 'user') {
-        wrapper.className = "bg-stone-900/70 border border-stone-800 rounded-2xl p-4 ml-6 md:ml-16 shadow-sm";
+        wrapper.className = "bg-stone-900/80 border border-stone-800 rounded-2xl p-3.5 ml-4 shadow-sm relative group";
       } else if (role === 'assistant') {
-        wrapper.className = "bg-stone-900/30 border border-stone-800/60 rounded-2xl p-4 md:p-6 shadow-sm space-y-3";
+        wrapper.className = "bg-stone-900/40 border border-stone-800/60 rounded-2xl p-4 shadow-sm space-y-2.5 relative group";
       } else {
-        wrapper.className = "bg-rose-950/20 border border-rose-900/50 rounded-2xl p-4 shadow-sm text-rose-300";
+        wrapper.className = "bg-rose-950/20 border border-rose-900/50 rounded-2xl p-3 shadow-sm text-rose-300 text-xs relative group";
       }
 
       let actionsHtml = '';
@@ -430,11 +394,11 @@
 
       if (role === 'assistant' && isChapterClosing) {
         actionsHtml = `
-          <div class="pt-3 mt-3 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
-            <button onclick="downloadCompleteSession()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1.5">
+          <div class="pt-2.5 mt-2 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
+            <button onclick="downloadCompleteSession()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-2.5 py-1.5 rounded-lg border border-stone-700 transition font-sans">
               📥 Descargar .txt
             </button>
-            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs px-3 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans flex items-center gap-1.5 font-semibold">
+            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="bg-emerald-600/20 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans font-semibold">
               ⚡ Archivar en GitHub
             </button>
           </div>
@@ -442,9 +406,20 @@
       }
 
       const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-amber-400/90');
+      
       wrapper.innerHTML = `
-        <div class="text-[10px] font-bold uppercase tracking-wider ${roleColor} mb-1.5">${sender}</div>
-        <div class="text-[14px] md:text-[15px] text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider ${roleColor}">${sender}</span>
+          <div class="flex items-center gap-1 opacity-70 hover:opacity-100 transition">
+            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1 text-stone-400 hover:text-stone-200 rounded text-xs">
+              📋
+            </button>
+            <button onclick="deleteMessage(${idx})" title="Borrar este mensaje" class="p-1 text-stone-400 hover:text-rose-400 rounded text-xs">
+              🗑️
+            </button>
+          </div>
+        </div>
+        <div class="text-[14px] text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
@@ -478,14 +453,13 @@
     async function autoArchiveChapter(content) {
       if (!ghToken) {
         toggleConfigModal();
-        return showToast("Configura tu GitHub Token en ⚙️️ Config.", true);
+        return showToast("Configura tu GitHub Token en ⚙ Config.", true);
       }
 
-      const chapterNum = prompt("Número del capítulo que vas a archivar (ej. 26):", "26");
+      const chapterNum = prompt("Número del capítulo a archivar:", "26");
       if (!chapterNum) return;
 
-      const confirmAction = confirm(`¿Cerrar y archivar el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
-      if (!confirmAction) return;
+      if (!confirm(`¿Archivar Capítulo ${chapterNum} en GitHub y actualizar Continuidad?`)) return;
 
       try {
         const res = await fetch('/api/auto-close-chapter', {
@@ -503,7 +477,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showToast("¡Capítulo archivado en GitHub con éxito!");
+          showToast("¡Archivado con éxito!");
           setTimeout(() => location.reload(), 1500);
         } else {
           showToast("Error: " + data.detail, true);
