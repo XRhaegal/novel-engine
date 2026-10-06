@@ -44,11 +44,7 @@
   <main id="chat-stream" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl mx-auto w-full">
     <div class="bg-stone-900 border border-stone-800 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed">
       <strong class="text-amber-400 block mb-1">Co-Piloto Listo:</strong>
-      Cada respuesta generada tiene dos opciones directas:
-      <ul class="list-disc pl-5 mt-1 space-y-1">
-        <li><strong>📥 Descargar .txt</strong> en tu teléfono o PC.</li>
-        <li><strong>💾 Subir a Canon</strong> para guardarlo permanentemente en tu repo de GitHub.</li>
-      </ul>
+      Cuando termines un capítulo, puedes descargarlo o usar el botón <strong>"⚡ Cerrar y Archivar Capítulo"</strong> para subirlo a GitHub y actualizar la Sección 15 automáticamente.
     </div>
   </main>
 
@@ -66,7 +62,7 @@
   <div id="modal-config" class="hidden fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
     <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-md w-full space-y-3">
       <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wide">Configuración (BYOK)</h3>
-      <p class="text-[11px] text-stone-400">Tus datos se guardan únicamente en la memoria local de tu dispositivo.</p>
+      <p class="text-[11px] text-stone-400">Datos guardados únicamente en tu navegador.</p>
       
       <div>
         <label class="block text-xs text-stone-300 mb-1">Google AI Studio API Key:</label>
@@ -123,7 +119,7 @@
       localStorage.setItem('GH_REPO', ghRepo);
 
       toggleConfigModal();
-      alert("Configuración guardada en tu navegador.");
+      alert("Configuración guardada.");
     }
 
     function getSelectedModel() {
@@ -133,7 +129,7 @@
     async function syncCache() {
       if (!savedKey) {
         toggleConfigModal();
-        return alert("Ingresa tu API Key de Gemini primero.");
+        return alert("Ingresa tu API Key de Gemini.");
       }
 
       const btn = document.getElementById('btn-sync');
@@ -208,41 +204,44 @@
       URL.revokeObjectURL(link.href);
     }
 
-    async function uploadToCanon(content) {
+    async function autoArchiveChapter(content) {
       if (!ghToken) {
         toggleConfigModal();
-        return alert("Debes configurar tu GitHub Token en el menú de engranaje (⚙️) para subir archivos.");
+        return alert("Configura tu GitHub Token en ⚙️ Config.");
       }
 
-      const defaultName = `capitulo_${new Date().toISOString().slice(0, 10)}.txt`;
-      const filename = prompt("Nombre del archivo para la carpeta canon/ (ej. capitulo_15.txt o fichas.txt):", defaultName);
-      if (!filename) return;
+      const chapterNum = prompt("Número del capítulo que vas a cerrar (ej. 22):", "22");
+      if (!chapterNum) return;
+
+      const confirmAction = confirm(`¿Cerrar y archivar automáticamente el Capítulo ${chapterNum} en GitHub y actualizar la Sección 15?`);
+      if (!confirmAction) return;
 
       try {
-        const res = await fetch('/api/save-canon-file', {
+        const res = await fetch('/api/auto-close-chapter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             github_token: ghToken,
             repo_owner: ghOwner,
             repo_name: ghRepo,
-            filename: filename,
-            content: content,
-            commit_message: `Añadir/actualizar ${filename} vía Engine Web`
+            chapter_num: chapterNum,
+            full_text: content,
+            api_key: savedKey,
+            model: getSelectedModel()
           })
         });
         const data = await res.json();
         if (res.ok) {
-          alert("¡Guardado en GitHub exitosamente!\nRecuerda picar a '⚡ Sincronizar' para meterlo a la caché.");
+          alert("¡Todo listo!\n" + data.message);
+          location.reload();
         } else {
-          alert("Error al subir a GitHub: " + data.detail);
+          alert("Error: " + data.detail);
         }
       } catch (err) {
-        alert("Error de conexión con el backend: " + err.message);
+        alert("Fallo de conexión: " + err.message);
       }
     }
 
-    // Almacenamos respuestas generadas para descargarlas o subirlas de forma segura
     window.generatedResponses = [];
 
     function appendMessage(sender, text, role) {
@@ -258,12 +257,12 @@
         window.generatedResponses.push(text);
 
         actionsHtml = `
-          <div class="pt-2 border-t border-stone-800 flex justify-end gap-2">
+          <div class="pt-2 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
             <button onclick="downloadAsTxt(window.generatedResponses[${msgId}])" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-3 py-1.5 rounded-lg border border-stone-700 transition font-sans flex items-center gap-1">
               📥 Descargar .txt
             </button>
-            <button onclick="uploadToCanon(window.generatedResponses[${msgId}])" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-xs px-3 py-1.5 rounded-lg border border-amber-500/40 transition font-sans flex items-center gap-1 font-semibold">
-              💾 Subir a Canon (GitHub)
+            <button onclick="autoArchiveChapter(window.generatedResponses[${msgId}])" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs px-3 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans flex items-center gap-1 font-semibold">
+              ⚡ Cerrar y Archivar Capítulo
             </button>
           </div>
         `;
