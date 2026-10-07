@@ -1,134 +1,224 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-stone-950 text-stone-100">
+<html lang="es" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Cedar Creek 1985</title>
+  <title>Cedar Creek · 1985</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Space Grotesk', sans-serif; }
-    .novel-font { font-family: 'Merriweather', serif; }
-    .mono-font { font-family: 'JetBrains Mono', monospace; }
-    
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: #292524; border-radius: 2px; }
+    :root {
+      /* Tierra y corteza, no negro con un acento */
+      --bark:        #1c1611;
+      --bark-raised: #241c15;
+      --bark-deep:   #15100c;
+      --seam:        #392c1f;
+      --rust:        #ad4a22;   /* tinta de sello, única acción primaria */
+      --rust-deep:   #7f3517;
+      --moss:        #56693f;  /* confirmación del sistema, nada más */
+      --manila:      #e4d6b4;  /* papel viejo, texto de lectura */
+      --manila-dim:  #a4937099;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Barlow Condensed', sans-serif;
+      background: var(--bark);
+      color: var(--manila);
+    }
+    .prose-font { font-family: 'Spectral', serif; font-style: normal; }
+    .prose-font em, .prose-font i { font-style: italic; }
 
-    @keyframes bounce-delay {
-      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-      40% { transform: scale(1.0); opacity: 1; }
+    .grain {
+      background-image:
+        radial-gradient(circle at 15% 10%, rgba(228,214,180,0.025) 0%, transparent 45%),
+        radial-gradient(circle at 85% 75%, rgba(228,214,180,0.018) 0%, transparent 50%);
     }
-    .typing-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: #d97706;
-      animation: bounce-delay 1.4s infinite ease-in-out both;
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--seam); border-radius: 3px; }
+
+    .icon { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; display: block; }
+
+    /* Cursor de máquina de escribir, en vez de puntos rebotando */
+    .typewriter-cursor {
+      display: inline-block; width: 7px; height: 14px; background: var(--rust);
+      animation: tw-blink 1s steps(1) infinite; margin-left: 2px; vertical-align: -2px;
     }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes tw-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+    .bubble-user {
+      background: linear-gradient(180deg, rgba(173,74,34,0.10), rgba(173,74,34,0.02));
+      border: 1px solid rgba(173,74,34,0.28);
+    }
+    .bubble-ai {
+      background: var(--bark-raised);
+      border: 1px solid var(--seam);
+    }
+    .bubble-error {
+      background: rgba(160,50,40,0.09);
+      border: 1px solid rgba(160,50,40,0.4);
+    }
+
+    .ledger-figure { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+    .seam-divider {
+      background-image: repeating-linear-gradient(90deg, var(--seam) 0 5px, transparent 5px 10px);
+      height: 1px;
+    }
+
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    /* El único momento de animación con intención: el sello al archivar */
+    #stamp-overlay { pointer-events: none; }
+    #stamp-overlay .stamp-ring {
+      opacity: 0; transform: scale(2.2) rotate(-18deg);
+    }
+    #stamp-overlay.firing .stamp-ring {
+      animation: stamp-hit 0.65s cubic-bezier(.2,1.4,.4,1) forwards;
+    }
+    @keyframes stamp-hit {
+      0%   { opacity: 0; transform: scale(2.2) rotate(-18deg); }
+      55%  { opacity: 1; transform: scale(0.92) rotate(-4deg); }
+      70%  { opacity: 1; transform: scale(1.04) rotate(-6deg); }
+      100% { opacity: 0; transform: scale(1.0) rotate(-6deg); }
+    }
+
+    textarea::placeholder { color: var(--manila-dim); }
   </style>
 </head>
-<body class="h-full flex flex-col bg-stone-950 antialiased overflow-hidden">
+<body class="h-full flex flex-col antialiased overflow-hidden grain">
 
-  <!-- Header Superior -->
-  <header class="bg-stone-900/95 backdrop-blur border-b border-stone-800 px-4 py-2.5 flex items-center justify-between z-30 shrink-0">
-    <div class="flex items-center gap-2">
-      <div id="status-orb" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-      <span class="text-xs font-bold tracking-widest uppercase text-amber-500">Cedar Creek 1985</span>
-      <span id="cache-badge" class="hidden sm:inline-block text-[10px] text-emerald-400 mono-font ml-2">Sincronizado</span>
+  <!-- Header -->
+  <header class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-b border-[color:var(--seam)] px-4 py-2.5 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <span id="status-orb" class="w-[7px] h-[7px] rounded-full bg-[color:var(--moss)] shrink-0"></span>
+      <div class="flex flex-col leading-none min-w-0">
+        <span class="text-[15px] font-semibold tracking-wide text-[color:var(--rust)] truncate">Cedar Creek</span>
+        <span class="text-[10px] text-[color:var(--manila-dim)] tracking-wide">Distrito forestal · oct. 1985</span>
+      </div>
+      <span id="cache-badge" class="hidden sm:inline-block text-[10px] text-[color:var(--moss)] ml-1 shrink-0">Canon sincronizado</span>
     </div>
 
-    <!-- Acciones Header -->
-    <div class="flex items-center gap-1.5">
-      <button onclick="toggleConfigModal()" title="Configuración" class="p-2 text-stone-400 hover:text-amber-400 hover:bg-stone-800 rounded-lg transition text-xs flex items-center justify-center">
-        ⚙️
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button onclick="toggleEconomyPopover()" id="economy-chip" title="Saldo de Edson" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[color:var(--bark-raised)] border border-[color:var(--seam)] text-[color:var(--manila)] hover:border-[color:var(--rust)]/50 transition">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v3.5c-2 .6-3 1.7-3 3.5s1 2.9 3 3.5V19H4v-3.5c2-.6 3-1.7 3-3.5S6 9.1 4 8.5V5Z"/><path d="M12 9.3v5.4"/></svg>
+        <span class="ledger-figure text-[13px] leading-none">$—.—</span>
       </button>
-      <button onclick="toggleMobileMenu()" title="Menú de herramientas" class="p-2 text-stone-300 hover:text-amber-400 bg-stone-800 rounded-lg transition text-xs flex items-center gap-1 font-semibold">
-        <span>Opciones</span> ▾
+      <button onclick="toggleConfigModal()" title="Configuración" class="p-2 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] hover:bg-[color:var(--bark-raised)] rounded-md transition">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="5" y1="6" x2="19" y2="6"/><circle cx="14" cy="6" r="2"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="9" cy="12" r="2"/><line x1="5" y1="18" x2="19" y2="18"/><circle cx="16" cy="18" r="2"/></svg>
+      </button>
+      <button onclick="toggleMobileMenu()" title="Herramientas" class="p-2 text-[color:var(--manila)] bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/50 rounded-md transition flex items-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="1.5"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
       </button>
     </div>
   </header>
 
-  <!-- Menú Desplegable Móvil / Herramientas -->
-  <div id="tools-menu" class="hidden absolute top-12 right-4 z-40 bg-stone-900 border border-stone-800 rounded-xl p-3 shadow-2xl flex flex-col gap-2.5 w-64">
+  <!-- Popover de saldo -->
+  <div id="economy-popover" class="hidden absolute top-12 right-4 z-40 bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-lg p-3.5 shadow-2xl w-56">
+    <div class="text-[11px] text-[color:var(--manila-dim)] mb-2">Cartera de Edson</div>
+    <div class="flex justify-between text-[13px] text-[color:var(--manila)] mb-1 ledger-figure">
+      <span class="font-normal text-[color:var(--manila-dim)]">En mano</span><span id="eco-mano">$0.00</span>
+    </div>
+    <div class="flex justify-between text-[13px] text-[color:var(--manila)] mb-2 ledger-figure">
+      <span class="font-normal text-[color:var(--manila-dim)]">En la maleta</span><span id="eco-maleta">$0.00</span>
+    </div>
+    <div class="seam-divider mb-2"></div>
+    <div class="flex justify-between text-[14px] font-semibold text-[color:var(--rust)] ledger-figure">
+      <span>Total</span><span id="eco-total">$0.00</span>
+    </div>
+  </div>
+
+  <!-- Menú de herramientas -->
+  <div id="tools-menu" class="hidden absolute top-12 right-4 z-40 bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-lg p-3 shadow-2xl flex flex-col gap-2.5 w-64">
     <div>
-      <label class="block text-[10px] text-stone-400 uppercase tracking-wider mb-1">Modelo de IA</label>
-      <select id="model-select" class="w-full bg-stone-950 border border-stone-700 text-stone-200 text-xs rounded-lg px-2.5 py-2 focus:border-amber-500 focus:outline-none">
+      <label class="block text-[11px] text-[color:var(--manila-dim)] mb-1">Modelo</label>
+      <select id="model-select" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] text-[color:var(--manila)] text-[13px] rounded-md px-2.5 py-2 focus:border-[color:var(--rust)] focus:outline-none">
         <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
         <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
         <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
         <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
       </select>
     </div>
-    <div class="flex gap-2 pt-1 border-t border-stone-800">
-      <button onclick="syncCache(); toggleMobileMenu();" class="flex-1 bg-emerald-800 hover:bg-emerald-700 text-stone-100 text-xs py-2 rounded-lg font-semibold transition">
-        ⚡ Canon
+    <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="syncCache(); toggleMobileMenu();" class="flex-1 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[13px] py-2 rounded-md font-medium transition border border-[color:var(--moss)]/35 flex items-center justify-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 16V6a2 2 0 0 1 2-2h9l5 5v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 9h5M8 13h8"/></svg>
+        Canon
       </button>
-      <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-stone-800 hover:bg-rose-900/60 text-stone-300 hover:text-rose-200 text-xs py-2 rounded-lg transition">
-        🧹 Nueva Sesión
+      <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M18 7l-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg>
+        Nueva sesión
       </button>
     </div>
   </div>
 
-  <!-- Feed Principal de Lectura -->
-  <main class="flex-1 flex flex-col h-full bg-stone-950 overflow-hidden relative">
+  <!-- Feed principal -->
+  <main class="flex-1 flex flex-col h-full overflow-hidden relative">
     <div id="chat-stream" class="flex-1 overflow-y-auto px-4 py-5 space-y-5 max-w-2xl mx-auto w-full">
-      <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/40 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed text-center">
-        <span class="text-amber-500 font-bold block mb-1 tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
-        Escribe con tranquilidad: pulsa <span class="text-stone-300 font-mono text-[11px]">Enter</span> para crear párrafos y el botón para enviar. Usa 📋 para copiar o 🗑️ para descartar turnos.
+      <div id="welcome-card" class="border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl p-5 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+        <span class="text-[color:var(--rust)] font-semibold block mb-1.5 text-[14px]">Cuaderno de campo abierto</span>
+        Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.
       </div>
     </div>
 
-    <!-- Barra de Escritura Inferior -->
-    <footer class="bg-stone-900/95 backdrop-blur border-t border-stone-800 px-3 py-2.5 shrink-0 safe-bottom">
+    <!-- Barra de escritura -->
+    <footer class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-t border-[color:var(--seam)] px-3 py-2.5 shrink-0" style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));">
       <div class="max-w-2xl mx-auto flex gap-2 items-end">
-        <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo (Enter para nuevo párrafo)..." class="flex-1 bg-stone-950 border border-stone-700/80 rounded-xl p-2.5 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none novel-font leading-relaxed"></textarea>
-        <button onclick="sendTurn()" id="btn-send" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold px-3.5 py-3 rounded-xl text-xs uppercase tracking-wider transition h-[48px] flex items-center justify-center shrink-0">
-          <span id="send-label">Enviar</span>
-          <span id="send-spinner" class="hidden animate-spin text-base">⏳</span>
+        <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed"></textarea>
+        <button onclick="sendTurn()" id="btn-send" class="bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold px-4 rounded-lg text-[13px] transition h-[48px] flex items-center justify-center shrink-0 gap-1.5">
+          <span id="send-label" class="flex items-center gap-1.5">
+            <svg class="icon" viewBox="0 0 24 24" style="stroke:#1a1510"><path d="M4 12 19 5l-6 14-2.5-6L4 12Z"/></svg>
+            Enviar
+          </span>
+          <svg id="send-spinner" class="hidden icon" viewBox="0 0 24 24" style="stroke:#1a1510;animation:tw-blink .6s steps(1) infinite"><circle cx="12" cy="12" r="7"/></svg>
         </button>
       </div>
     </footer>
   </main>
 
-  <!-- Notificaciones Flotantes -->
-  <div id="toast" class="fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-emerald-500/50 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 text-center">
+  <!-- Sello animado (único momento de motion con intención) -->
+  <div id="stamp-overlay" class="fixed inset-0 z-[60] flex items-center justify-center">
+    <div class="stamp-ring w-40 h-40 rounded-full border-[3px] flex items-center justify-center" style="border-color: var(--rust); color: var(--rust);">
+      <span class="text-[15px] font-bold tracking-widest">ARCHIVADO</span>
+    </div>
+  </div>
+
+  <!-- Notificaciones -->
+  <div id="toast" class="fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[color:var(--moss)]/50 text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 text-center">
     <span id="toast-text">Notificación</span>
   </div>
 
-  <!-- Modal Configuración -->
+  <!-- Modal configuración -->
   <div id="modal-config" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-stone-900 border border-stone-700 rounded-2xl p-5 max-w-sm w-full space-y-3">
-      <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wide">Configuración</h3>
-      
+    <div class="bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-xl p-5 max-w-sm w-full space-y-3">
+      <h3 class="text-[15px] font-semibold text-[color:var(--rust)]">Configuración</h3>
+
       <div>
-        <label class="block text-[11px] text-stone-300 mb-1">Google AI Studio API Key:</label>
-        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100 focus:border-amber-500 font-mono">
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Clave de API de Google AI Studio</label>
+        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] focus:border-[color:var(--rust)] focus:outline-none">
       </div>
 
       <div>
-        <label class="block text-[11px] text-stone-300 mb-1">GitHub Token (PAT):</label>
-        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100 focus:border-amber-500 font-mono">
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">GitHub Token (PAT)</label>
+        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] focus:border-[color:var(--rust)] focus:outline-none">
       </div>
 
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-[11px] text-stone-300 mb-1">Usuario:</label>
-          <input type="text" id="input-gh-owner" value="XRhaegal" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
+          <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Usuario</label>
+          <input type="text" id="input-gh-owner" value="XRhaegal" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)]">
         </div>
         <div>
-          <label class="block text-[11px] text-stone-300 mb-1">Repo:</label>
-          <input type="text" id="input-gh-repo" value="novel-engine" class="w-full bg-stone-950 border border-stone-700 rounded-xl p-2 text-xs text-stone-100">
+          <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Repo</label>
+          <input type="text" id="input-gh-repo" value="novel-engine" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)]">
         </div>
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
-        <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-xs text-stone-400 hover:text-stone-200">Cerrar</button>
-        <button onclick="saveSettings()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-xs px-3.5 py-1.5 rounded-xl">Guardar</button>
+        <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-[13px] text-[color:var(--manila-dim)] hover:text-[color:var(--manila)]">Cerrar</button>
+        <button onclick="saveSettings()" class="bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold text-[13px] px-3.5 py-1.5 rounded-lg">Guardar</button>
       </div>
     </div>
   </div>
@@ -173,14 +263,14 @@
       stream.innerHTML = '';
       if (sessionHistory.length === 0) {
         stream.innerHTML = `
-          <div id="welcome-card" class="border border-stone-800/60 bg-stone-900/40 rounded-2xl p-4 text-xs text-stone-400 leading-relaxed text-center">
-            <span class="text-amber-500 font-bold block mb-1 tracking-wide">ESTUDIO EDITORIAL ACTIVO</span>
-            Escribe con tranquilidad: pulsa <span class="text-stone-300 font-mono text-[11px]">Enter</span> para crear párrafos y el botón para enviar. Usa 📋 para copiar o 🗑️ para descartar turnos.
+          <div id="welcome-card" class="border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl p-5 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+            <span class="text-[color:var(--rust)] font-semibold block mb-1.5 text-[14px]">Cuaderno de campo abierto</span>
+            Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.
           </div>
         `;
         return;
       }
-      sessionHistory.forEach((item, idx) => renderMessageDom(item.sender, item.text, item.role, idx, false));
+      sessionHistory.forEach((item, idx) => renderMessageDom(item.sender, item.text, item.role, idx, false, item.warnings || []));
       stream.scrollTop = stream.scrollHeight;
     }
 
@@ -197,13 +287,21 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       loadRemoteSession();
+      refreshEconomyChip();
 
-      // Atajo: Ctrl+Enter o Cmd+Enter para enviar rápido en PC si quieres, Enter normal solo salta línea
       const pBox = document.getElementById('prompt-box');
       pBox.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           sendTurn();
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        const pop = document.getElementById('economy-popover');
+        const chip = document.getElementById('economy-chip');
+        if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !chip.contains(e.target)) {
+          pop.classList.add('hidden');
         }
       });
     });
@@ -216,8 +314,31 @@
       document.getElementById('modal-config').classList.toggle('hidden');
     }
 
+    function toggleEconomyPopover() {
+      document.getElementById('economy-popover').classList.toggle('hidden');
+    }
+
+    async function refreshEconomyChip(data) {
+      let state = data;
+      if (!state) {
+        try {
+          const res = await fetch('/api/economy');
+          if (res.ok) {
+            const payload = await res.json();
+            state = payload.state;
+          }
+        } catch (e) { return; }
+      }
+      if (!state) return;
+      const total = (state.mano + state.maleta).toFixed(2);
+      document.querySelector('#economy-chip .ledger-figure').innerText = `$${total}`;
+      document.getElementById('eco-mano').innerText = `$${state.mano.toFixed(2)}`;
+      document.getElementById('eco-maleta').innerText = `$${state.maleta.toFixed(2)}`;
+      document.getElementById('eco-total').innerText = `$${total}`;
+    }
+
     async function clearSessionHistory() {
-      if (!confirm("¿Deseas vaciar la pantalla para iniciar un nuevo capítulo?")) return;
+      if (!confirm("¿Vaciar la pantalla para iniciar un nuevo capítulo?")) return;
       sessionHistory = [];
       localStorage.removeItem('CC_SESSION_HISTORY');
       try { await fetch('/api/session', { method: 'DELETE' }); } catch(e) {}
@@ -229,9 +350,9 @@
       const toast = document.getElementById('toast');
       const toastText = document.getElementById('toast-text');
       toastText.innerText = text;
-      toast.className = isError 
-        ? "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-rose-500 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-100 z-50 text-center"
-        : "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-stone-900 border border-emerald-500 text-stone-200 text-xs px-3.5 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-100 z-50 text-center";
+      toast.className = isError
+        ? "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[#a03228] text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-100 z-50 text-center"
+        : "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[color:var(--moss)] text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-100 z-50 text-center";
 
       setTimeout(() => {
         toast.className = toast.className.replace('opacity-100', 'opacity-0 pointer-events-none');
@@ -263,7 +384,7 @@
         return showToast("Ingresa tu API Key de Gemini primero.", true);
       }
 
-      showToast("Verificando canon en Render...");
+      showToast("Verificando canon...");
       try {
         const res = await fetch('/api/sync-cache', {
           method: 'POST',
@@ -285,15 +406,10 @@
       const container = document.getElementById('chat-stream');
       const bubble = document.createElement('div');
       bubble.id = 'thinking-bubble';
-      bubble.className = "bg-stone-900/40 border border-stone-800/80 rounded-2xl p-3.5 flex items-center gap-2.5";
+      bubble.className = "bubble-ai rounded-xl p-3.5 flex items-center gap-2";
       bubble.innerHTML = `
-        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-500">Cedar Creek AI</span>
-        <div class="flex items-center gap-1">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-        </div>
-        <span class="text-xs text-stone-500 novel-font italic">redactando...</span>
+        <span class="text-[12px] font-semibold text-[color:var(--rust)]">Cedar Creek</span>
+        <span class="text-[13px] text-[color:var(--manila-dim)] prose-font italic">redactando<span class="typewriter-cursor"></span></span>
       `;
       container.appendChild(bubble);
       container.scrollTop = container.scrollHeight;
@@ -315,7 +431,7 @@
 
       appendMessage("Tú", text, "user");
       box.value = "";
-      
+
       const btn = document.getElementById('btn-send');
       const label = document.getElementById('send-label');
       const spinner = document.getElementById('send-spinner');
@@ -335,7 +451,11 @@
         removeThinkingIndicator();
 
         if (res.ok) {
-          appendMessage("Cedar Creek AI", data.response, "assistant");
+          appendMessage("Cedar Creek", data.response, "assistant", data.lint_warnings || []);
+          if (data.economy) refreshEconomyChip(data.economy);
+          if (data.economy_movements && data.economy_movements.length > 0) {
+            showToast("Caja: " + data.economy_movements.join(" · "));
+          }
         } else {
           appendMessage("Error", data.detail || "Fallo en el servidor.", "error");
         }
@@ -349,19 +469,19 @@
       }
     }
 
-    function appendMessage(sender, text, role) {
-      sessionHistory.push({ sender, text, role, time: Date.now() });
+    function appendMessage(sender, text, role, warnings = []) {
+      sessionHistory.push({ sender, text, role, time: Date.now(), warnings });
       syncSessionToServer();
       const idx = sessionHistory.length - 1;
-      renderMessageDom(sender, text, role, idx, true);
+      renderMessageDom(sender, text, role, idx, true, warnings);
     }
 
     function copyMessage(idx) {
       if (sessionHistory[idx]) {
         navigator.clipboard.writeText(sessionHistory[idx].text).then(() => {
-          showToast("Mensaje copiado al portapapeles 📋");
+          showToast("Mensaje copiado.");
         }).catch(() => {
-          showToast("No se pudo copiar", true);
+          showToast("No se pudo copiar.", true);
         });
       }
     }
@@ -371,22 +491,27 @@
       sessionHistory.splice(idx, 1);
       syncSessionToServer();
       renderAllHistory();
-      showToast("Mensaje eliminado 🗑️");
+      showToast("Mensaje eliminado.");
     }
 
-    function renderMessageDom(sender, text, role, idx, scroll = true) {
+    const ICON_COPY = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8.5A1.5 1.5 0 0 0 6 16h2"/></svg>`;
+    const ICON_CUT  = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.3"/><circle cx="6" cy="18" r="2.3"/><line x1="7.8" y1="7.6" x2="19" y2="18"/><line x1="7.8" y1="16.4" x2="19" y2="6"/></svg>`;
+    const ICON_DOWNLOAD = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 19h14"/></svg>`;
+    const ICON_STAMP = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="12" cy="10" r="6.5"/><path d="M9 10.5l2 2 4-4.3"/><path d="M8 19h8"/><path d="M12 16.5V19"/></svg>`;
+
+    function renderMessageDom(sender, text, role, idx, scroll = true, warnings = []) {
       const welcome = document.getElementById('welcome-card');
       if (welcome) welcome.classList.add('hidden');
 
       const container = document.getElementById('chat-stream');
       const wrapper = document.createElement('div');
-      
+
       if (role === 'user') {
-        wrapper.className = "bg-stone-900/80 border border-stone-800 rounded-2xl p-3.5 ml-4 shadow-sm relative group";
+        wrapper.className = "bubble-user rounded-xl p-3.5 ml-6 shadow-sm relative group";
       } else if (role === 'assistant') {
-        wrapper.className = "bg-stone-900/40 border border-stone-800/60 rounded-2xl p-4 shadow-sm space-y-2.5 relative group";
+        wrapper.className = "bubble-ai rounded-xl p-4 shadow-sm space-y-2.5 relative group";
       } else {
-        wrapper.className = "bg-rose-950/20 border border-rose-900/50 rounded-2xl p-3 shadow-sm text-rose-300 text-xs relative group";
+        wrapper.className = "bubble-error rounded-xl p-3 shadow-sm text-[#e0a89f] text-[13px] relative group";
       }
 
       let actionsHtml = '';
@@ -394,32 +519,44 @@
 
       if (role === 'assistant' && isChapterClosing) {
         actionsHtml = `
-          <div class="pt-2.5 mt-2 border-t border-stone-800 flex justify-end gap-2 flex-wrap">
-            <button onclick="downloadCompleteSession()" class="bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs px-2.5 py-1.5 rounded-lg border border-stone-700 transition font-sans">
-              📥 Descargar .txt
+          <div class="pt-2.5 mt-2 border-t border-[color:var(--seam)] flex justify-end gap-2 flex-wrap">
+            <button onclick="downloadCompleteSession()" class="flex items-center gap-1.5 bg-[color:var(--bark)] hover:bg-[color:var(--bark-deep)] text-[color:var(--manila)] text-[12px] px-2.5 py-1.5 rounded-md border border-[color:var(--seam)] transition">
+              ${ICON_DOWNLOAD} Descargar .txt
             </button>
-            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="bg-emerald-600/20 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-500/40 transition font-sans font-semibold">
-              ⚡ Archivar en GitHub
+            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="flex items-center gap-1.5 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[12px] px-2.5 py-1.5 rounded-md border border-[color:var(--moss)]/40 transition font-medium">
+              ${ICON_STAMP} Archivar capítulo
             </button>
           </div>
         `;
       }
 
-      const roleColor = role === 'user' ? 'text-amber-500' : (role === 'error' ? 'text-rose-400' : 'text-amber-400/90');
-      
+      let warningsHtml = '';
+      if (role === 'assistant' && warnings && warnings.length > 0) {
+        const items = warnings.map(w => `<li class="text-[12px] text-[#d4a44f] leading-snug">${w}</li>`).join('');
+        warningsHtml = `
+          <details class="mt-1">
+            <summary class="text-[11px] text-[#d4a44f]/85 font-medium">Revisar estilo (${warnings.length})</summary>
+            <ul class="mt-1.5 space-y-1 pl-2.5 border-l border-[#8a6a2a]/40 ml-1">${items}</ul>
+          </details>
+        `;
+      }
+
+      const roleColor = role === 'user' ? 'text-[color:var(--rust)]' : (role === 'error' ? 'text-[#e0a89f]' : 'text-[color:var(--rust)]/90');
+
       wrapper.innerHTML = `
         <div class="flex items-center justify-between mb-1">
-          <span class="text-[10px] font-bold uppercase tracking-wider ${roleColor}">${sender}</span>
-          <div class="flex items-center gap-1 opacity-70 hover:opacity-100 transition">
-            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1 text-stone-400 hover:text-stone-200 rounded text-xs">
-              📋
+          <span class="text-[12px] font-semibold ${roleColor}">${sender}</span>
+          <div class="flex items-center gap-0.5 opacity-60 hover:opacity-100 transition">
+            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] rounded">
+              ${ICON_COPY}
             </button>
-            <button onclick="deleteMessage(${idx})" title="Borrar este mensaje" class="p-1 text-stone-400 hover:text-rose-400 rounded text-xs">
-              🗑️
+            <button onclick="deleteMessage(${idx})" title="Descartar turno" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[#c96a5a] rounded">
+              ${ICON_CUT}
             </button>
           </div>
         </div>
-        <div class="text-[14px] text-stone-200 novel-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        ${warningsHtml}
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
@@ -450,13 +587,19 @@
       URL.revokeObjectURL(link.href);
     }
 
+    function fireStampAnimation() {
+      const overlay = document.getElementById('stamp-overlay');
+      overlay.classList.add('firing');
+      setTimeout(() => overlay.classList.remove('firing'), 750);
+    }
+
     async function autoArchiveChapter(content) {
       if (!ghToken) {
         toggleConfigModal();
-        return showToast("Configura tu GitHub Token en ⚙ Config.", true);
+        return showToast("Configura tu GitHub Token en Configuración.", true);
       }
 
-      const chapterNum = prompt("Número del capítulo a archivar:", "26");
+      const chapterNum = prompt("Número del capítulo a archivar:", "27");
       if (!chapterNum) return;
 
       if (!confirm(`¿Archivar Capítulo ${chapterNum} en GitHub y actualizar Continuidad?`)) return;
@@ -477,7 +620,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showToast("¡Archivado con éxito!");
+          fireStampAnimation();
+          showToast("Archivado con éxito.");
           setTimeout(() => location.reload(), 1500);
         } else {
           showToast("Error: " + data.detail, true);
