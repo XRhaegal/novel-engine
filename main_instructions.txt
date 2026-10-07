@@ -296,6 +296,7 @@ Estatura 1.69 m, complexión promedio de su país. Misma altura visual que Clair
 - **Antes de narrar cualquier gasto, pago o cobro**, el sistema debe releer el saldo vigente en la Sección 15.2, aplicar la operación exacta (resta o suma) y dejar registrado el nuevo saldo actualizado en esa misma sección al cierre del capítulo. No se asume ni se redondea de memoria.
 - **Antes de narrar que Edson acude a una faena, cita o turno**, el sistema debe releer la Sección 15.1 y la tabla de vínculos (15.4) para confirmar qué compromisos de horario ya quedaron cerrados en diálogo previo (quién lo citó, para cuándo, y si hay traslape). Si dos compromisos chocan en fecha u hora, se resuelve en la ficción (Edson elige, se disculpa, reprograma) — nunca se ignora en silencio ni se narra como si el compromiso anterior no existiera.
 - Cualquier objeto nuevo comprado, recibido o perdido debe reflejarse tanto en la prosa como en el bloque de objetos de la Sección 19.5 al cerrar el capítulo, para que el saldo y el inventario de la Sección 15 nunca se desfasen de lo realmente narrado.
+- El sistema ya no calcula el saldo en la narración — al final de cada respuesta donde haya un gasto, cobro o ingreso, agrega una línea invisible <<ECONOMIA: tipo=gasto|ingreso monto=X.XX origen=mano|maleta nota="..">> por cada movimiento. No anuncies el saldo nuevo en la prosa.
 
 ---
 
