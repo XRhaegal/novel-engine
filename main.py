@@ -79,6 +79,13 @@ class RebuildIndexRequest(BaseModel):
     api_key: Optional[str] = None
 
 
+class UndoChapterRequest(BaseModel):
+    github_token: str
+    repo_owner: str
+    repo_name: str
+    chapter_num: str
+
+
 # ----------------------------------------------------------------------
 # Utilidades básicas (cliente Gemini, Main prompt, GitHub)
 # ----------------------------------------------------------------------
@@ -119,6 +126,44 @@ def get_static_docs_block() -> str:
 def extract_chapter_number(filepath: str) -> int:
     match = re.search(r'(\d+)', os.path.basename(filepath))
     return int(match.group(1)) if match else 0
+
+
+def get_file_sha(token: str, owner: str, repo: str, path: str) -> Optional[str]:
+    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    res = requests.get(url, headers=headers)
+    return res.json().get("sha") if res.status_code == 200 else None
+
+
+def get_previous_file_version(token: str, owner: str, repo: str, path: str) -> Optional[str]:
+    """Busca, en el historial real de Git, el contenido del archivo justo
+    ANTES del último commit que lo tocó. Se usa para 'deshacer' un cierre
+    de capítulo sin tener que reconstruir nada a mano."""
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    commits_url = f"https://api.github.com/repos/{owner}/{repo}/commits"
+    res = requests.get(commits_url, headers=headers, params={"path": path, "per_page": 2})
+    if res.status_code != 200:
+        return None
+    commits = res.json()
+    if len(commits) < 2:
+        return None  # No había una versión anterior (el archivo se creó en el último commit).
+
+    prior_sha = commits[1]["sha"]
+    content_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    res2 = requests.get(content_url, headers=headers, params={"ref": prior_sha})
+    if res2.status_code != 200:
+        return None
+    return base64.b64decode(res2.json()["content"]).decode("utf-8")
+
+
+def delete_file_from_github(token: str, owner: str, repo: str, path: str, commit_msg: str) -> bool:
+    sha = get_file_sha(token, owner, repo, path)
+    if not sha:
+        return False
+    url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    res = requests.delete(url, headers=headers, json={"message": commit_msg, "sha": sha})
+    return res.status_code in [200, 204]
 
 
 def commit_to_github(token: str, owner: str, repo: str, path: str, content: str, commit_msg: str):
@@ -494,6 +539,125 @@ def sync_cache(payload: Optional[ChatRequest] = None):
     }
 
 
+@app.get("/api/stats")
+def get_stats():
+    valid_files = get_canon_files_sorted()
+    index = load_index()
+    main_text = get_main_prompt()
+    main_chars = len(main_text)
+    # Estimado grueso: ~4 caracteres por token en español, suficiente para una alerta, no para facturación.
+    main_tokens_estimate = main_chars // 4
+
+    warnings = []
+    if main_chars > 60000:
+        warnings.append("El Main ya pesa bastante — considera otra ronda de compresión en la Sección 15.5.")
+    if len(valid_files) >= 10:
+        oldest_untouched = len(valid_files) - 8
+        if oldest_untouched > 0:
+            warnings.append(
+                f"Llevas {len(valid_files)} capítulos en canon/ — valora fusionar los más viejos "
+                f"en Resumenes_por_Capitulo.md si aún no lo hiciste."
+            )
+
+    return {
+        "total_chapters": len(valid_files),
+        "indexed_fragments": len(index),
+        "main_chars": main_chars,
+        "main_tokens_estimate": main_tokens_estimate,
+        "latest_chapter": os.path.basename(valid_files[-1]) if valid_files else None,
+        "warnings": warnings
+    }
+
+
+@app.get("/api/links")
+def get_links():
+    if os.path.exists("links_state.json"):
+        with open("links_state.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"personajes": {}, "ultima_actualizacion": None}
+
+
+@app.get("/api/search")
+def search_canon(q: str, top_k: int = 8, api_key: Optional[str] = None):
+    """Buscador para el autor: NO pasa por el modelo generador, solo
+    regresa los fragmentos más relevantes por significado real."""
+    client, _ = get_client(api_key)
+    index = load_index()
+    if not index:
+        return {"query": q, "results": []}
+
+    query_vec = embed_query(client, q)
+    scored = []
+    for entry in index:
+        score = cosine_sim(query_vec, entry.get("embedding", []))
+        scored.append((score, entry))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:top_k]
+
+    return {
+        "query": q,
+        "results": [
+            {"file": e["file"], "text": e["text"], "score": round(s, 3)}
+            for s, e in top
+        ]
+    }
+
+
+@app.post("/api/undo-last-chapter")
+def undo_last_chapter(req: UndoChapterRequest):
+    """Revierte el cierre de un capítulo usando el historial real de Git
+    (nada se pierde en GitHub, esto solo regresa el estado 'actual' al
+    punto de antes). Borra el archivo del capítulo y regresa el Main,
+    el índice y el saldo a como estaban."""
+    cap_filename = f"Capitulo {req.chapter_num}.txt"
+    report = []
+
+    # 1) Borrar el archivo del capítulo recién cerrado.
+    deleted = delete_file_from_github(
+        req.github_token, req.repo_owner, req.repo_name,
+        f"canon/{cap_filename}", f"Deshacer cierre: eliminado {cap_filename}"
+    )
+    report.append(f"Capítulo eliminado de canon/: {'sí' if deleted else 'no se encontró'}")
+
+    # 2) Regresar main_instructions.txt a la versión anterior.
+    prev_main = get_previous_file_version(req.github_token, req.repo_owner, req.repo_name, "main_instructions.txt")
+    if prev_main:
+        commit_to_github(
+            req.github_token, req.repo_owner, req.repo_name,
+            "main_instructions.txt", prev_main, f"Deshacer cierre: revertir Main (Cap {req.chapter_num})"
+        )
+        with open("main_instructions.txt", "w", encoding="utf-8") as f:
+            f.write(prev_main)
+        report.append("Main revertido a la versión anterior.")
+    else:
+        report.append("No se encontró versión anterior del Main (no se tocó).")
+
+    # 3) Quitar del índice de embeddings los fragmentos de este capítulo.
+    index = load_index()
+    new_index = [e for e in index if e.get("file") != cap_filename]
+    if len(new_index) != len(index):
+        save_index(new_index)
+        commit_to_github(
+            req.github_token, req.repo_owner, req.repo_name,
+            INDEX_FILE, json.dumps(new_index, ensure_ascii=False),
+            f"Deshacer cierre: quitar fragmentos de {cap_filename}"
+        )
+        report.append(f"Índice actualizado, quitados {len(index) - len(new_index)} fragmentos.")
+
+    # 4) Regresar el saldo económico a la versión anterior.
+    prev_economy = get_previous_file_version(req.github_token, req.repo_owner, req.repo_name, ECONOMY_FILE)
+    if prev_economy:
+        commit_to_github(
+            req.github_token, req.repo_owner, req.repo_name,
+            ECONOMY_FILE, prev_economy, f"Deshacer cierre: revertir saldo (Cap {req.chapter_num})"
+        )
+        with open(ECONOMY_FILE, "w", encoding="utf-8") as f:
+            f.write(prev_economy)
+        report.append("Saldo revertido a la versión anterior.")
+
+    return {"status": "success", "chapter": req.chapter_num, "details": report}
+
+
 @app.post("/api/rebuild-index")
 def rebuild_index(req: RebuildIndexRequest):
     """Llamar UNA SOLA VEZ para construir el índice de embeddings a partir
@@ -564,6 +728,41 @@ def auto_close_chapter(req: AutoCloseRequest):
         )
         with open("main_instructions.txt", "w", encoding="utf-8") as f:
             f.write(new_main)
+
+    # Actualizar el tablero de vínculos por personaje, extraído del CONTINUITY STATE.
+    if continuity_block:
+        try:
+            client, _ = get_client(req.api_key)
+            extraction_prompt = (
+                "Del siguiente CONTINUITY STATE, extrae ÚNICAMENTE un JSON con esta forma exacta: "
+                '{"personajes": {"NombrePersonaje": {"nivel": "...", "ultimo_hito": "...", '
+                f'"capitulo": {req.chapter_num}}}}}. '
+                "Un objeto por cada personaje mencionado con relación a Edson. No inventes nada que no "
+                "esté en el texto.\n\n" + continuity_block
+            )
+            links_response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=[types.Content(role="user", parts=[types.Part(text=extraction_prompt)])],
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            new_links = json.loads(links_response.text)
+
+            links_state = {"personajes": {}, "ultima_actualizacion": req.chapter_num}
+            if os.path.exists("links_state.json"):
+                with open("links_state.json", "r", encoding="utf-8") as f:
+                    links_state = json.load(f)
+            links_state.setdefault("personajes", {}).update(new_links.get("personajes", {}))
+            links_state["ultima_actualizacion"] = req.chapter_num
+
+            with open("links_state.json", "w", encoding="utf-8") as f:
+                json.dump(links_state, f, ensure_ascii=False, indent=2)
+            commit_to_github(
+                req.github_token, req.repo_owner, req.repo_name,
+                "links_state.json", json.dumps(links_state, ensure_ascii=False, indent=2),
+                f"Tablero de vínculos actualizado: Cap {req.chapter_num}"
+            )
+        except Exception as e:
+            print(f"Aviso: no se pudo actualizar el tablero de vínculos: {e}")
 
     # Actualizar el índice de embeddings con el capítulo recién cerrado.
     try:
