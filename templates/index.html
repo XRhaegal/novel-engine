@@ -81,6 +81,8 @@
       animation: tw-blink 1s steps(1) infinite; margin-left: 2px; vertical-align: -2px;
     }
     @keyframes tw-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    @keyframes turn-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .turn-new { animation: turn-enter 0.38s cubic-bezier(.2,.7,.3,1) both; }
 
     .bubble-user {
       background: linear-gradient(180deg, rgba(173,74,34,0.10), rgba(173,74,34,0.02));
@@ -187,6 +189,16 @@
       <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
         <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M18 7l-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg>
         Nueva sesión
+      </button>
+    </div>
+    <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="adjustEconomy(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 10h5M9 14h3"/></svg>
+        Ajustar saldo
+      </button>
+      <button onclick="rebuildIndex(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>
+        Reconstruir índice
       </button>
     </div>
   </div>
@@ -415,6 +427,51 @@
       return document.getElementById('model-select').value;
     }
 
+    async function adjustEconomy() {
+      const mano = prompt("Saldo real EN MANO (solo el número, ej: 141.62):");
+      if (mano === null) return;
+      const maleta = prompt("Saldo real EN MALETA (solo el número, ej: 280.00):");
+      if (maleta === null) return;
+
+      try {
+        const res = await fetch(`/api/economy/adjust?mano=${encodeURIComponent(mano)}&maleta=${encodeURIComponent(maleta)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          refreshEconomyChip(data.state);
+          showToast("Saldo ajustado correctamente.");
+        } else {
+          showToast("Error: " + (data.detail || "no se pudo ajustar"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
+    async function rebuildIndex() {
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+      if (!ghToken) { toggleConfigModal(); return showToast("Ingresa tu GitHub Token primero.", true); }
+      if (!confirm("Esto revisa TODOS los capítulos en canon/ y puede tardar uno o dos minutos. ¿Continuar?")) return;
+
+      showToast("Reconstruyendo índice, espera...");
+      try {
+        const res = await fetch('/api/rebuild-index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ github_token: ghToken, repo_owner: ghOwner, repo_name: ghRepo, api_key: savedKey })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message);
+        } else {
+          showToast("Error: " + (data.detail || "falló la reconstrucción"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
     async function syncCache() {
       if (!savedKey) {
         toggleConfigModal();
@@ -543,12 +600,13 @@
       const container = document.getElementById('chat-stream');
       const wrapper = document.createElement('div');
 
+      const enterClass = scroll ? " turn-new" : "";
       if (role === 'user') {
-        wrapper.className = "bubble-user rounded-xl p-3.5 ml-6 shadow-sm relative group";
+        wrapper.className = "bubble-user rounded-xl p-3.5 ml-6 shadow-sm relative group" + enterClass;
       } else if (role === 'assistant') {
-        wrapper.className = "bubble-ai rounded-xl p-4 shadow-sm space-y-2.5 relative group";
+        wrapper.className = "bubble-ai rounded-xl p-4 shadow-sm space-y-2.5 relative group" + enterClass;
       } else {
-        wrapper.className = "bubble-error rounded-xl p-3 shadow-sm text-[#e0a89f] text-[13px] relative group";
+        wrapper.className = "bubble-error rounded-xl p-3 shadow-sm text-[#e0a89f] text-[13px] relative group" + enterClass;
       }
 
       let actionsHtml = '';
@@ -597,7 +655,7 @@
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
-      if (scroll) container.scrollTop = container.scrollHeight;
+      if (scroll) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
 
     function getLatestAssistantBlock() {
