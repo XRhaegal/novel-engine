@@ -133,6 +133,9 @@
   <!-- Header -->
   <header class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-b border-[color:var(--seam)] px-4 py-2.5 flex items-center justify-between z-30 shrink-0">
     <div class="flex items-center gap-2.5 min-w-0">
+      <button onclick="toggleDrawer()" title="Bitácora del pueblo" class="p-1.5 -ml-1 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded-md transition shrink-0">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
+      </button>
       <span id="status-orb" class="w-[7px] h-[7px] rounded-full bg-[color:var(--moss)] shrink-0"></span>
       <div class="flex flex-col leading-none min-w-0">
         <span class="text-[15px] font-semibold tracking-wide text-[color:var(--rust)] truncate">Cedar Creek</span>
@@ -154,6 +157,42 @@
       </button>
     </div>
   </header>
+
+  <!-- Fondo oscuro del panel lateral -->
+  <div id="drawer-backdrop" onclick="toggleDrawer()" class="hidden fixed inset-0 bg-black/60 z-40"></div>
+
+  <!-- Panel lateral: Bitácora del pueblo -->
+  <aside id="side-drawer" class="fixed top-0 left-0 h-full w-[85%] max-w-xs z-50 bg-[color:var(--bark-deep)] border-r border-[color:var(--seam)] shadow-2xl transition-transform duration-300 -translate-x-full flex flex-col">
+    <div class="px-4 py-3 border-b border-[color:var(--seam)] flex items-center justify-between shrink-0">
+      <span class="text-[13px] font-semibold text-[color:var(--rust)] tracking-wide">Bitácora del pueblo</span>
+      <button onclick="toggleDrawer()" class="p-1 text-[color:var(--manila-dim)]">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="flex border-b border-[color:var(--seam)] shrink-0">
+      <button onclick="switchDrawerTab('vinculos')" data-tab="vinculos" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--rust)] border-b-2 border-[color:var(--rust)]">Vínculos</button>
+      <button onclick="switchDrawerTab('stats')" data-tab="stats" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Estadísticas</button>
+      <button onclick="switchDrawerTab('buscador')" data-tab="buscador" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Buscador</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3.5">
+      <!-- Vínculos -->
+      <div id="tab-vinculos" class="drawer-panel space-y-2.5"></div>
+
+      <!-- Estadísticas -->
+      <div id="tab-stats" class="drawer-panel hidden space-y-2.5"></div>
+
+      <!-- Buscador -->
+      <div id="tab-buscador" class="drawer-panel hidden space-y-2.5">
+        <div class="flex gap-1.5">
+          <input id="search-input" type="text" placeholder="¿Qué dije de...?" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] rounded-md px-2 py-1.5 text-[13px] text-[color:var(--manila)]">
+          <button onclick="runCanonSearch()" class="px-2.5 py-1.5 rounded-md bg-[color:var(--rust)] text-[color:var(--bark)] text-[11px] font-semibold shrink-0">Buscar</button>
+        </div>
+        <div id="search-results" class="space-y-2 pt-1"></div>
+      </div>
+    </div>
+  </aside>
 
   <!-- Popover de saldo -->
   <div id="economy-popover" class="hidden absolute top-12 right-4 z-40 bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-lg p-3.5 shadow-2xl w-56">
@@ -214,15 +253,22 @@
 
     <!-- Barra de escritura -->
     <footer class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-t border-[color:var(--seam)] px-3 py-2.5 shrink-0" style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));">
-      <div class="max-w-2xl mx-auto flex gap-2 items-end">
-        <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed"></textarea>
-        <button onclick="sendTurn()" id="btn-send" class="varnish stacked-shadow bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold px-4 rounded-lg text-[13px] transition h-[48px] flex items-center justify-center shrink-0 gap-1.5">
-          <span id="send-label" class="flex items-center gap-1.5">
-            <svg class="icon" viewBox="0 0 24 24" style="stroke:#1a1510"><path d="M4 12 19 5l-6 14-2.5-6L4 12Z"/></svg>
-            Enviar
-          </span>
-          <svg id="send-spinner" class="hidden icon" viewBox="0 0 24 24" style="stroke:#1a1510;animation:tw-blink .6s steps(1) infinite"><circle cx="12" cy="12" r="7"/></svg>
-        </button>
+      <div class="max-w-2xl mx-auto">
+        <div id="pending-attach" class="hidden mb-1.5"></div>
+        <div class="flex gap-2 items-end">
+          <input type="file" id="attach-input" class="hidden" accept="image/*,.txt,.md" onchange="handleAttachChange(this)">
+          <button onclick="triggerAttach()" title="Adjuntar imagen o archivo" class="p-2.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] border border-[color:var(--seam)] rounded-lg h-[48px] w-[44px] flex items-center justify-center shrink-0 transition">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M16 6 7.5 14.5a3 3 0 1 0 4.2 4.2L19 11.4a5 5 0 1 0-7-7L4.5 11.9"/></svg>
+          </button>
+          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed"></textarea>
+          <button onclick="sendTurn()" id="btn-send" class="varnish stacked-shadow bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold px-4 rounded-lg text-[13px] transition h-[48px] flex items-center justify-center shrink-0 gap-1.5">
+            <span id="send-label" class="flex items-center gap-1.5">
+              <svg class="icon" viewBox="0 0 24 24" style="stroke:#1a1510"><path d="M4 12 19 5l-6 14-2.5-6L4 12Z"/></svg>
+              Enviar
+            </span>
+            <svg id="send-spinner" class="hidden icon" viewBox="0 0 24 24" style="stroke:#1a1510;animation:tw-blink .6s steps(1) infinite"><circle cx="12" cy="12" r="7"/></svg>
+          </button>
+        </div>
       </div>
     </footer>
   </main>
@@ -472,6 +518,121 @@
       }
     }
 
+    function toggleDrawer() {
+      const drawer = document.getElementById('side-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const isOpen = !drawer.classList.contains('-translate-x-full');
+      if (isOpen) {
+        drawer.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      } else {
+        drawer.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+        switchDrawerTab('vinculos');
+      }
+    }
+
+    function switchDrawerTab(tab) {
+      document.querySelectorAll('.drawer-tab').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.classList.toggle('text-[color:var(--rust)]', active);
+        btn.classList.toggle('border-[color:var(--rust)]', active);
+        btn.classList.toggle('text-[color:var(--manila-dim)]', !active);
+        btn.classList.toggle('border-transparent', !active);
+      });
+      document.querySelectorAll('.drawer-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+
+      if (tab === 'vinculos') loadLinksTab();
+      if (tab === 'stats') loadStatsTab();
+    }
+
+    async function loadLinksTab() {
+      const box = document.getElementById('tab-vinculos');
+      box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Cargando...</div>`;
+      try {
+        const res = await fetch('/api/links');
+        const data = await res.json();
+        const personajes = data.personajes || {};
+        const names = Object.keys(personajes);
+        if (names.length === 0) {
+          box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Aún no hay vínculos registrados. Se llenan solos al cerrar capítulos.</div>`;
+          return;
+        }
+        box.innerHTML = names.map(name => {
+          const p = personajes[name];
+          return `
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+              <div class="flex justify-between items-baseline">
+                <span class="text-[13px] font-semibold text-[color:var(--manila)]">${name}</span>
+                <span class="text-[10px] text-[color:var(--rust)]">${p.nivel || '—'}</span>
+              </div>
+              <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-0.5 leading-snug">${p.ultimo_hito || ''}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]/70 mt-1">Cap. ${p.capitulo ?? '?'}</div>
+            </div>`;
+        }).join('');
+      } catch (e) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar.</div>`;
+      }
+    }
+
+    async function loadStatsTab() {
+      const box = document.getElementById('tab-stats');
+      box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Cargando...</div>`;
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        const warningsHtml = (data.warnings || []).map(w =>
+          `<div class="text-[11.5px] text-[#e0a89f] border-l-2 border-[#e0a89f]/50 pl-2 py-0.5">${w}</div>`
+        ).join('');
+        box.innerHTML = `
+          <div class="grid grid-cols-2 gap-2">
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.total_chapters}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Capítulos</div>
+            </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.indexed_fragments}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Fragmentos</div>
+            </div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-[12px] text-[color:var(--manila-dim)]">
+            Main: ~${data.main_tokens_estimate.toLocaleString()} tokens estimados<br>
+            Último capítulo: ${data.latest_chapter || '—'}
+          </div>
+          ${warningsHtml}
+        `;
+      } catch (e) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar.</div>`;
+      }
+    }
+
+    async function runCanonSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+
+      const results = document.getElementById('search-results');
+      results.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Buscando...</div>`;
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&api_key=${encodeURIComponent(savedKey)}`);
+        const data = await res.json();
+        if (!data.results || data.results.length === 0) {
+          results.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Sin resultados.</div>`;
+          return;
+        }
+        results.innerHTML = data.results.map(r => `
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="flex justify-between text-[10px] text-[color:var(--manila-dim)] mb-1">
+              <span>${r.file}</span><span>${r.score}</span>
+            </div>
+            <div class="text-[12px] text-[color:var(--manila)] leading-snug">${r.text.slice(0, 220)}${r.text.length > 220 ? '…' : ''}</div>
+          </div>`).join('');
+      } catch (e) {
+        results.innerHTML = `<div class="text-[12px] text-[#e0a89f]">Error de búsqueda.</div>`;
+      }
+    }
+
     async function syncCache() {
       if (!savedKey) {
         toggleConfigModal();
@@ -514,6 +675,9 @@
       if (bubble) bubble.remove();
     }
 
+    // Imagen pendiente de enviar en el próximo turno (si el autor adjuntó una).
+    let pendingImage = null; // { base64, mime, name }
+
     async function sendTurn() {
       const box = document.getElementById('prompt-box');
       const text = box.value.trim();
@@ -525,7 +689,12 @@
 
       appendMessage("Tú", text, "user");
       box.value = "";
+      await submitUserMessage(text);
+    }
 
+    /** Lógica real de mandar un mensaje al backend y renderizar la respuesta.
+     * La usan tanto el botón de Enviar normal como el flujo de "editar y regenerar". */
+    async function submitUserMessage(text) {
       const btn = document.getElementById('btn-send');
       const label = document.getElementById('send-label');
       const spinner = document.getElementById('send-spinner');
@@ -535,11 +704,18 @@
 
       showThinkingIndicator();
 
+      const payload = { message: text, api_key: savedKey, model: getSelectedModel() };
+      if (pendingImage) {
+        payload.image_base64 = pendingImage.base64;
+        payload.image_mime = pendingImage.mime;
+      }
+      clearPendingImage();
+
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, api_key: savedKey, model: getSelectedModel() })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         removeThinkingIndicator();
@@ -561,6 +737,51 @@
         label.classList.remove('hidden');
         spinner.classList.add('hidden');
       }
+    }
+
+    // --- Adjuntar imágenes o archivos de texto ---
+    function triggerAttach() { document.getElementById('attach-input').click(); }
+
+    function handleAttachChange(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingImage = { base64: reader.result.split(',')[1], mime: file.type, name: file.name };
+          renderPendingImageChip();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // Archivo de texto: se agrega como bloque citado directo al cuadro de escritura.
+        const reader = new FileReader();
+        reader.onload = () => {
+          const box = document.getElementById('prompt-box');
+          const block = `\n\n[Archivo adjunto: ${file.name}]\n${reader.result}\n[Fin de ${file.name}]\n`;
+          box.value = (box.value + block).trim();
+          showToast(`"${file.name}" agregado al mensaje.`);
+        };
+        reader.readAsText(file);
+      }
+      input.value = ""; // permite adjuntar el mismo archivo dos veces seguidas si hace falta
+    }
+
+    function renderPendingImageChip() {
+      const holder = document.getElementById('pending-attach');
+      if (!pendingImage) { holder.innerHTML = ''; holder.classList.add('hidden'); return; }
+      holder.classList.remove('hidden');
+      holder.innerHTML = `
+        <div class="flex items-center gap-1.5 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] rounded-md px-2 py-1 text-[11px] text-[color:var(--manila-dim)] w-fit">
+          <svg class="icon" style="width:12px;height:12px" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="1.5"/><path d="M5 17l4-4 3 3 5-6 2 2"/></svg>
+          <span>${pendingImage.name}</span>
+          <button onclick="clearPendingImage()" class="text-[color:var(--rust)]">×</button>
+        </div>`;
+    }
+
+    function clearPendingImage() {
+      pendingImage = null;
+      renderPendingImageChip();
     }
 
     function appendMessage(sender, text, role, warnings = []) {
@@ -592,6 +813,7 @@
     const ICON_CUT  = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.3"/><circle cx="6" cy="18" r="2.3"/><line x1="7.8" y1="7.6" x2="19" y2="18"/><line x1="7.8" y1="16.4" x2="19" y2="6"/></svg>`;
     const ICON_DOWNLOAD = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 19h14"/></svg>`;
     const ICON_STAMP = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="12" cy="10" r="6.5"/><path d="M9 10.5l2 2 4-4.3"/><path d="M8 19h8"/><path d="M12 16.5V19"/></svg>`;
+    const ICON_EDIT = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M16 4l4 4-11 11H5v-4L16 4Z"/></svg>`;
 
     function renderMessageDom(sender, text, role, idx, scroll = true, warnings = []) {
       const welcome = document.getElementById('welcome-card');
@@ -642,6 +864,10 @@
         <div class="flex items-center justify-between mb-1">
           <span class="text-[12px] font-semibold ${roleColor}">${sender}</span>
           <div class="flex items-center gap-0.5 opacity-60 hover:opacity-100 transition">
+            ${role === 'user' ? `
+            <button onclick="startEditMessage(${idx})" title="Editar y regenerar" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded">
+              ${ICON_EDIT}
+            </button>` : ''}
             <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] rounded">
               ${ICON_COPY}
             </button>
@@ -650,12 +876,63 @@
             </button>
           </div>
         </div>
-        <div class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div id="msg-text-${idx}" class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div id="msg-edit-${idx}" class="hidden"></div>
         ${warningsHtml}
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
       if (scroll) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }
+
+    function startEditMessage(idx) {
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      const editDiv = document.getElementById(`msg-edit-${idx}`);
+      const original = sessionHistory[idx].text;
+
+      textDiv.classList.add('hidden');
+      editDiv.classList.remove('hidden');
+      editDiv.innerHTML = `
+        <textarea id="edit-box-${idx}" class="w-full bg-[color:var(--bark)] border border-[color:var(--rust)] rounded-md p-2 text-[14px] text-[color:var(--manila)] prose-font resize-y" rows="3">${original}</textarea>
+        <div class="flex justify-end gap-2 mt-1.5">
+          <button onclick="cancelEditMessage(${idx})" class="text-[12px] text-[color:var(--manila-dim)] px-2 py-1">Cancelar</button>
+          <button onclick="confirmEditMessage(${idx})" class="text-[12px] bg-[color:var(--rust)] text-[color:var(--bark)] font-semibold px-3 py-1 rounded-md">Guardar y regenerar</button>
+        </div>
+      `;
+    }
+
+    function cancelEditMessage(idx) {
+      document.getElementById(`msg-text-${idx}`).classList.remove('hidden');
+      document.getElementById(`msg-edit-${idx}`).classList.add('hidden');
+    }
+
+    async function confirmEditMessage(idx) {
+      const newText = document.getElementById(`edit-box-${idx}`).value.trim();
+      if (!newText) return;
+      if (!confirm("Esto descarta todo lo escrito después de este mensaje y genera una respuesta nueva. ¿Continuar?")) return;
+
+      // 1) Recortar la sesión de la UI: todo lo de antes de idx se queda, el resto se va.
+      sessionHistory = sessionHistory.slice(0, idx);
+
+      // 2) Reconstruir el historial real que el servidor usa para generar, en el mismo formato.
+      const backendHistory = sessionHistory
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.text }));
+
+      try {
+        await fetch('/api/history/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history: backendHistory })
+        });
+      } catch (e) {
+        showToast("No se pudo sincronizar el historial con el servidor.", true);
+        return;
+      }
+
+      renderAllHistory();
+      appendMessage("Tú", newText, "user");
+      await submitUserMessage(newText);
     }
 
     function getLatestAssistantBlock() {
