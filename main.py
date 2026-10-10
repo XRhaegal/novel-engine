@@ -56,6 +56,12 @@ class ChatRequest(BaseModel):
     message: str
     api_key: Optional[str] = None
     model: Optional[str] = DEFAULT_MODEL
+    image_base64: Optional[str] = None   # Imagen adjunta por el autor, solo para este turno.
+    image_mime: Optional[str] = None     # p.ej. "image/jpeg", "image/png"
+
+
+class SetHistoryRequest(BaseModel):
+    history: List[Dict[str, str]]  # [{"role": "user"|"model", "text": "..."}]
 
 
 class AutoCloseRequest(BaseModel):
@@ -212,14 +218,21 @@ def clear_chat_history():
         os.remove(CHAT_HISTORY_FILE)
 
 
-def history_to_contents(history: List[Dict[str, str]], new_message: str):
-    """Convierte el historial guardado en el formato que pide la API de Gemini."""
+def history_to_contents(history: List[Dict[str, str]], new_message: str,
+                         image_bytes: Optional[bytes] = None, image_mime: Optional[str] = None):
+    """Convierte el historial guardado en el formato que pide la API de Gemini.
+    Si hay una imagen adjunta, se agrega como parte adicional del turno actual."""
     contents = []
     for turn in history:
         contents.append(
             types.Content(role=turn["role"], parts=[types.Part(text=turn["text"])])
         )
-    contents.append(types.Content(role="user", parts=[types.Part(text=new_message)]))
+
+    final_parts = [types.Part(text=new_message)]
+    if image_bytes and image_mime:
+        final_parts.append(types.Part(inline_data=types.Blob(mime_type=image_mime, data=image_bytes)))
+
+    contents.append(types.Content(role="user", parts=final_parts))
     return contents
 
 
@@ -516,6 +529,16 @@ def save_session(req: SaveSessionRequest):
         raise HTTPException(status_code=500, detail=f"Error guardando sesión: {e}")
 
 
+@app.post("/api/history/set")
+def set_generation_history(req: SetHistoryRequest):
+    """Permite reescribir el historial real de generación — se usa cuando
+    el autor edita un mensaje viejo y quiere regenerar desde ahí: el
+    frontend manda la versión recortada (todo lo anterior al mensaje
+    editado) y el servidor la adopta como la nueva verdad."""
+    save_chat_history(req.history)
+    return {"status": "ok", "turns": len(req.history)}
+
+
 @app.delete("/api/session")
 def clear_session():
     if os.path.exists(SESSION_FILE):
@@ -809,7 +832,17 @@ def chat(req: ChatRequest):
     system_instruction_full = f"{main_prompt}\n\n{economy_block}\n\n{dynamic_canon}"
 
     history = load_chat_history()
-    contents = history_to_contents(history, req.message)
+
+    image_bytes = None
+    history_note = req.message
+    if req.image_base64 and req.image_mime:
+        try:
+            image_bytes = base64.b64decode(req.image_base64)
+            history_note = f"{req.message}\n\n[El autor adjuntó una imagen de referencia visual para esta escena.]"
+        except Exception:
+            image_bytes = None
+
+    contents = history_to_contents(history, req.message, image_bytes, req.image_mime)
 
     fallback_chain = [
         requested_model,
@@ -835,7 +868,8 @@ def chat(req: ChatRequest):
                 warnings = lint_response(clean_text)
 
                 # Guardar el turno en el historial real de generación (ya sin la etiqueta de economía).
-                history.append({"role": "user", "text": req.message})
+                # Si hubo imagen, solo queda la nota de que existió — los bytes no se guardan para siempre.
+                history.append({"role": "user", "text": history_note})
                 history.append({"role": "model", "text": clean_text})
                 save_chat_history(history)
 
