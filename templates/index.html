@@ -84,6 +84,17 @@
     @keyframes turn-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .turn-new { animation: turn-enter 0.38s cubic-bezier(.2,.7,.3,1) both; }
 
+    /* Editar / copiar / borrar se quedan accesibles mientras el mensaje
+       siga visible en pantalla, sin importar cuánto hayas bajado leyendo. */
+    .msg-toolbar {
+      position: sticky;
+      top: 52px; /* justo debajo del header fijo */
+      z-index: 15;
+      padding: 4px 0;
+      backdrop-filter: blur(3px);
+      background: linear-gradient(to bottom, rgba(26,21,16,0.92) 70%, transparent);
+    }
+
     .bubble-user {
       background: linear-gradient(180deg, rgba(173,74,34,0.10), rgba(173,74,34,0.02));
       border: 1px solid rgba(173,74,34,0.28);
@@ -861,7 +872,7 @@
       const roleColor = role === 'user' ? 'text-[color:var(--rust)]' : (role === 'error' ? 'text-[#e0a89f]' : 'text-[color:var(--rust)]/90');
 
       wrapper.innerHTML = `
-        <div class="flex items-center justify-between mb-1">
+        <div class="msg-toolbar flex items-center justify-between mb-1">
           <span class="text-[12px] font-semibold ${roleColor}">${sender}</span>
           <div class="flex items-center gap-0.5 opacity-60 hover:opacity-100 transition">
             ${role === 'user' ? `
@@ -882,7 +893,16 @@
         ${actionsHtml}
       `;
       container.appendChild(wrapper);
-      if (scroll) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      if (scroll) {
+        if (role === 'assistant') {
+          // El mensaje nuevo de la IA se acomoda arriba, para empezar a leer
+          // desde el principio en vez de que te avienten hasta el final.
+          const targetTop = Math.max(wrapper.offsetTop - 8, 0);
+          container.scrollTo({ top: targetTop, behavior: 'smooth' });
+        } else {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+      }
     }
 
     function startEditMessage(idx) {
