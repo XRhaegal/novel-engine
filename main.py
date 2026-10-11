@@ -37,6 +37,7 @@ ECONOMY_FILE = "economy_state.json"           # Saldo real, calculado por Python
 STATIC_DOCS = ["Resumenes_por_Capitulo.md", "Ficha_Voz_Personajes.md", "Biblia_Continuidad.md"]
 
 TOP_K_SEMANTIC = 6          # Cuántos fragmentos antiguos relevantes se traen por significado.
+RECENT_CHAPTERS_COUNT = 3   # Capítulos recientes que SIEMPRE van completos (rutinas, lugares, objetos frescos).
 CHUNK_MAX_CHARS = 900       # Tamaño aproximado de cada fragmento al trocear un capítulo.
 
 # Nombres del elenco, para el linter de vocativos de relleno.
@@ -318,7 +319,7 @@ def get_recent_and_relevant_canon(client, query: str) -> str:
     if not valid_files:
         return ""
 
-    recent_files = valid_files[-2:] if len(valid_files) >= 2 else valid_files
+    recent_files = valid_files[-RECENT_CHAPTERS_COUNT:] if len(valid_files) >= RECENT_CHAPTERS_COUNT else valid_files
     recent_names = {os.path.basename(f) for f in recent_files}
 
     canon_blocks = []
@@ -548,17 +549,60 @@ def clear_session():
     return {"status": "cleared"}
 
 
+def extract_economy_from_main(client) -> Optional[Dict[str, float]]:
+    """Lee la Sección 15.2 del Main (donde el saldo ya queda escrito en
+    texto al cerrar cada capítulo) y le pide al modelo que saque nomás
+    los dos números limpios, en vez de que el autor los teclee a mano."""
+    main_text = get_main_prompt()
+    match = re.search(r"### 15\.2.*?(?=###\s*15\.3|## 16)", main_text, re.DOTALL)
+    if not match:
+        return None
+    section_text = match.group(0)
+
+    try:
+        prompt = (
+            "De este fragmento de un documento de reglas de novela, extrae el saldo de "
+            "dinero actual del protagonista. Responde ÚNICAMENTE un JSON con esta forma "
+            'exacta: {"mano": 0.00, "maleta": 0.00} usando los números reales que '
+            "encuentres (en dólares, como decimales). Si no encuentras un número para "
+            "alguno de los dos, usa 0.\n\n" + section_text
+        )
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=[types.Content(role="user", parts=[types.Part(text=prompt)])],
+            config=types.GenerateContentConfig(response_mime_type="application/json")
+        )
+        data = json.loads(response.text)
+        return {"mano": float(data.get("mano", 0)), "maleta": float(data.get("maleta", 0))}
+    except Exception as e:
+        print(f"Aviso: no se pudo extraer el saldo del Main: {e}")
+        return None
+
+
 @app.post("/api/sync-cache")
 def sync_cache(payload: Optional[ChatRequest] = None):
     valid_files = get_canon_files_sorted()
     last_file = os.path.basename(valid_files[-1]) if valid_files else "Ninguno"
     index = load_index()
+
+    economy_note = ""
+    api_key = payload.api_key if payload else None
+    if api_key:
+        try:
+            client, _ = get_client(api_key)
+            detected = extract_economy_from_main(client)
+            if detected:
+                save_economy(detected)
+                economy_note = f" Saldo detectado desde el Main: ${detected['mano']:.2f} mano / ${detected['maleta']:.2f} maleta."
+        except Exception as e:
+            print(f"Aviso: sync-cache no pudo ajustar el saldo: {e}")
+
     return {
         "status": "success",
         "total_files": len(valid_files),
         "indexed_fragments": len(index),
         "latest_chapter": last_file,
-        "message": f"Canon validado: {len(valid_files)} archivos, {len(index)} fragmentos indexados. Último: {last_file}."
+        "message": f"Canon validado: {len(valid_files)} archivos, {len(index)} fragmentos indexados. Último: {last_file}.{economy_note}"
     }
 
 
