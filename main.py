@@ -59,6 +59,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = DEFAULT_MODEL
     image_base64: Optional[str] = None   # Imagen adjunta por el autor, solo para este turno.
     image_mime: Optional[str] = None     # p.ej. "image/jpeg", "image/png"
+    custom_rules: Optional[str] = None   # Reglas del autor, puestas desde Configuración (no desde el Main).
 
 
 class SetHistoryRequest(BaseModel):
@@ -873,7 +874,15 @@ def chat(req: ChatRequest):
     main_prompt = get_main_prompt()
     dynamic_canon = get_recent_and_relevant_canon(client, req.message)
     economy_block = economy_ground_truth_block()
-    system_instruction_full = f"{main_prompt}\n\n{economy_block}\n\n{dynamic_canon}"
+
+    custom_rules_block = ""
+    if req.custom_rules and req.custom_rules.strip():
+        custom_rules_block = (
+            "## REGLAS ADICIONALES DEL AUTOR (aplican con la misma fuerza que el Main; "
+            "si alguna choca con el Main, gana esta)\n" + req.custom_rules.strip()
+        )
+
+    system_instruction_full = f"{main_prompt}\n\n{economy_block}\n\n{custom_rules_block}\n\n{dynamic_canon}"
 
     history = load_chat_history()
 
