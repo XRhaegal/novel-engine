@@ -275,6 +275,12 @@
         Reconstruir índice
       </button>
     </div>
+    <div class="pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="recalibrate(); toggleMobileMenu();" class="w-full bg-[color:var(--rust)]/15 hover:bg-[color:var(--rust)]/25 text-[color:var(--rust)] border border-[color:var(--rust)]/40 text-[13px] py-2 rounded-md font-medium transition flex items-center justify-center gap-1.5">
+        <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 12a8 8 0 1 1 2.3 5.6"/><path d="M4 17v-4h4"/></svg>
+        Recalibrar (se desvarió)
+      </button>
+    </div>
   </div>
 
   <!-- Feed principal -->
@@ -325,7 +331,7 @@
 
   <!-- Modal configuración -->
   <div id="modal-config" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-xl p-5 max-w-sm w-full space-y-3">
+    <div class="bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-xl p-5 max-w-sm w-full space-y-3 max-h-[85vh] overflow-y-auto">
       <h3 class="text-[15px] font-semibold text-[color:var(--rust)]">Configuración</h3>
 
       <div>
@@ -349,6 +355,12 @@
         </div>
       </div>
 
+      <div>
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Reglas adicionales (tuyas, aparte del Main)</label>
+        <textarea id="input-custom-rules" rows="4" placeholder="Ej: nunca describas la ropa de Edson en las mañanas. Siempre que Grace hable con él, debe tutearlo..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] prose-font resize-y focus:border-[color:var(--rust)] focus:outline-none"></textarea>
+        <span class="block text-[10.5px] text-[color:var(--manila-dim)] mt-1 italic">Se aplican en cada generación junto con el Main — si chocan con él, estas ganan.</span>
+      </div>
+
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-[13px] text-[color:var(--manila-dim)] hover:text-[color:var(--manila)]">Cerrar</button>
         <button onclick="saveSettings()" class="bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold text-[13px] px-3.5 py-1.5 rounded-lg">Guardar</button>
@@ -361,11 +373,13 @@
     let ghToken = localStorage.getItem('GH_TOKEN') || '';
     let ghOwner = localStorage.getItem('GH_OWNER') || 'XRhaegal';
     let ghRepo = localStorage.getItem('GH_REPO') || 'novel-engine';
+    let customRules = localStorage.getItem('CUSTOM_RULES') || '';
 
     document.getElementById('input-api-key').value = savedKey;
     document.getElementById('input-gh-token').value = ghToken;
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
+    document.getElementById('input-custom-rules').value = customRules;
 
     let sessionHistory = [];
 
@@ -500,11 +514,13 @@
       ghToken = document.getElementById('input-gh-token').value.trim();
       ghOwner = document.getElementById('input-gh-owner').value.trim();
       ghRepo = document.getElementById('input-gh-repo').value.trim();
+      customRules = document.getElementById('input-custom-rules').value.trim();
 
       localStorage.setItem('GEMINI_USER_KEY', savedKey);
       localStorage.setItem('GH_TOKEN', ghToken);
       localStorage.setItem('GH_OWNER', ghOwner);
       localStorage.setItem('GH_REPO', ghRepo);
+      localStorage.setItem('CUSTOM_RULES', customRules);
 
       toggleConfigModal();
       showToast("Configuración guardada.");
@@ -674,6 +690,22 @@
       }
     }
 
+    async function recalibrate() {
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+      const prompt = (
+        "[RECALIBRACIÓN — no es un turno de historia, es una verificación de contexto]\n" +
+        "Antes de seguir narrando, revisa con cuidado el Main, los documentos de apoyo " +
+        "(Resúmenes, Ficha de Voz, Biblia de Continuidad) y los capítulos recientes que tienes " +
+        "disponibles. Después, respóndeme ÚNICAMENTE con una lista breve confirmando: " +
+        "(1) fecha y hora exacta de la escena en curso, (2) dónde está Edson y quién más " +
+        "hay en la escena, (3) los últimos 2-3 hitos relevantes que no debes olvidar, y " +
+        "(4) cualquier regla del Main que sientas que se te había pasado. No avances la " +
+        "historia en esta respuesta, solo confirma que ya te ubicaste."
+      );
+      appendMessage("Recalibración", prompt, "user");
+      await submitUserMessage(prompt);
+    }
+
     async function syncCache() {
       if (!savedKey) {
         toggleConfigModal();
@@ -746,6 +778,7 @@
       showThinkingIndicator();
 
       const payload = { message: text, api_key: savedKey, model: getSelectedModel() };
+      if (customRules) payload.custom_rules = customRules;
       if (pendingImage) {
         payload.image_base64 = pendingImage.base64;
         payload.image_mime = pendingImage.mime;
