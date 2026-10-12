@@ -19,7 +19,7 @@
       --rust-deep:   #7f3517;
       --moss:        #56693f;  /* confirmación del sistema, nada más */
       --manila:      #e4d6b4;  /* papel viejo, texto de lectura */
-      --manila-dim:  #a4937099;
+      --manila-dim:  #b8a688; /* antes era semitransparente y daba solo 2.95:1 de contraste — ahora 7.55:1 */
     }
     html, body { height: 100%; }
     body {
@@ -83,6 +83,30 @@
     @keyframes tw-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
     @keyframes turn-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .turn-new { animation: turn-enter 0.38s cubic-bezier(.2,.7,.3,1) both; }
+
+    /* Narración vs. diálogo: el diálogo lleva un trazo propio a la izquierda
+       y respira un poco más, para que el ojo distinga quién habla de qué pasa. */
+    .prose-narration { margin: 0; }
+    .prose-dialogue {
+      margin: 0;
+      padding-left: 10px;
+      border-left: 2px solid var(--rust-dim, var(--rust));
+      opacity: 0.96;
+    }
+
+    /* Encabezado de capítulo: deja de ser texto plano perdido en el párrafo. */
+    .prose-chapter-header { text-align: center; margin: 1.1rem 0 1.3rem; }
+    .prose-chapter-rule { height: 1px; width: 56px; margin: 0.5rem auto; background: var(--seam); }
+    .prose-chapter-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      font-size: 15px; color: var(--rust);
+    }
+    .prose-chapter-sub { font-size: 11.5px; color: var(--manila-dim); font-style: italic; margin-top: 2px; }
+
+    /* Corte de escena ( * * * ): un ornamento discreto, no asteriscos sueltos. */
+    .prose-scene-break { display: flex; justify-content: center; gap: 7px; margin: 0.9rem 0; }
+    .prose-scene-break span { width: 3px; height: 3px; border-radius: 50%; background: var(--manila-dim); align-self: center; }
 
     /* Editar / copiar / borrar se quedan accesibles mientras el mensaje
        siga visible en pantalla, sin importar cuánto hayas bajado leyendo. */
@@ -256,9 +280,12 @@
   <!-- Feed principal -->
   <main class="flex-1 flex flex-col h-full overflow-hidden relative">
     <div id="chat-stream" class="flex-1 overflow-y-auto px-4 py-5 space-y-5 max-w-2xl mx-auto w-full">
-      <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl p-5 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
-        <span class="text-[color:var(--rust)] font-semibold block mb-1.5 text-[14px]">Cuaderno de campo abierto</span>
-        Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.
+      <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl px-5 py-6 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+        <div class="prose-chapter-rule" style="margin-bottom: 0.7rem;"></div>
+        <span class="text-[color:var(--rust)] font-semibold block mb-1 text-[15px] tracking-wide">Cuaderno de campo abierto</span>
+        <span class="block italic text-[12px] text-[color:var(--manila-dim)] mb-3">Cedar Creek, distrito forestal — octubre de 1985</span>
+        <span class="block">Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.</span>
+        <div class="prose-chapter-rule" style="margin-top: 0.9rem;"></div>
       </div>
     </div>
 
@@ -369,9 +396,12 @@
       stream.innerHTML = '';
       if (sessionHistory.length === 0) {
         stream.innerHTML = `
-          <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl p-5 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
-            <span class="text-[color:var(--rust)] font-semibold block mb-1.5 text-[14px]">Cuaderno de campo abierto</span>
-            Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.
+          <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl px-5 py-6 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+            <div class="prose-chapter-rule" style="margin-bottom: 0.7rem;"></div>
+            <span class="text-[color:var(--rust)] font-semibold block mb-1 text-[15px] tracking-wide">Cuaderno de campo abierto</span>
+            <span class="block italic text-[12px] text-[color:var(--manila-dim)] mb-3">Cedar Creek, distrito forestal — octubre de 1985</span>
+            <span class="block">Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.</span>
+            <div class="prose-chapter-rule" style="margin-top: 0.9rem;"></div>
           </div>
         `;
         return;
@@ -826,6 +856,39 @@
     const ICON_STAMP = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="12" cy="10" r="6.5"/><path d="M9 10.5l2 2 4-4.3"/><path d="M8 19h8"/><path d="M12 16.5V19"/></svg>`;
     const ICON_EDIT = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M16 4l4 4-11 11H5v-4L16 4Z"/></svg>`;
 
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /** Convierte la prosa cruda en párrafos con tratamiento propio:
+     * encabezados de capítulo, cortes de escena ( * * * ) y líneas de
+     * diálogo (que arrancan con raya — ) diferenciadas de la narración. */
+    function formatProse(rawText) {
+      const paragraphs = rawText.split(/\n\s*\n/);
+      return paragraphs.map(p => {
+        const trimmed = p.trim();
+        if (!trimmed) return '';
+
+        if (/^cap[ií]tulo\s+\d+/i.test(trimmed)) {
+          const lines = trimmed.split('\n').map(l => escapeHtml(l.trim()));
+          return `<div class="prose-chapter-header">
+            <div class="prose-chapter-rule"></div>
+            <div class="prose-chapter-title">${lines[0]}</div>
+            ${lines[1] ? `<div class="prose-chapter-sub">${lines.slice(1).join(' ')}</div>` : ''}
+            <div class="prose-chapter-rule"></div>
+          </div>`;
+        }
+
+        if (/^\*\s*\*\s*\*$/.test(trimmed)) {
+          return `<div class="prose-scene-break"><span></span><span></span><span></span></div>`;
+        }
+
+        const escaped = escapeHtml(trimmed).replace(/\n/g, '<br>');
+        const isDialogue = /^—/.test(trimmed);
+        return `<p class="${isDialogue ? 'prose-dialogue' : 'prose-narration'}">${escaped}</p>`;
+      }).join('');
+    }
+
     function renderMessageDom(sender, text, role, idx, scroll = true, warnings = []) {
       const welcome = document.getElementById('welcome-card');
       if (welcome) welcome.classList.add('hidden');
@@ -887,7 +950,7 @@
             </button>
           </div>
         </div>
-        <div id="msg-text-${idx}" class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed whitespace-pre-wrap">${text}</div>
+        <div id="msg-text-${idx}" class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed space-y-3">${formatProse(text)}</div>
         <div id="msg-edit-${idx}" class="hidden"></div>
         ${warningsHtml}
         ${actionsHtml}
