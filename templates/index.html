@@ -255,6 +255,14 @@
         <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
       </select>
     </div>
+    <div>
+      <label class="block text-[11px] text-[color:var(--manila-dim)] mb-1">Velocidad de respuesta</label>
+      <select id="thinking-select" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] text-[color:var(--manila)] text-[13px] rounded-md px-2.5 py-2 focus:border-[color:var(--rust)] focus:outline-none">
+        <option value="low" selected>Rápida (pensamiento bajo)</option>
+        <option value="medium">Equilibrada</option>
+        <option value="high">Cuidadosa (más lenta)</option>
+      </select>
+    </div>
     <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
       <button onclick="syncCache(); toggleMobileMenu();" class="flex-1 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[13px] py-2 rounded-md font-medium transition border border-[color:var(--moss)]/35 flex items-center justify-center gap-1.5">
         <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 16V6a2 2 0 0 1 2-2h9l5 5v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 9h5M8 13h8"/></svg>
@@ -380,6 +388,10 @@
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
     document.getElementById('input-custom-rules').value = customRules;
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('THINKING_LEVEL');
+      if (saved) document.getElementById('thinking-select').value = saved;
+    });
 
     let sessionHistory = [];
 
@@ -528,6 +540,12 @@
 
     function getSelectedModel() {
       return document.getElementById('model-select').value;
+    }
+
+    function getThinkingLevel() {
+      const select = document.getElementById('thinking-select');
+      localStorage.setItem('THINKING_LEVEL', select.value);
+      return select.value;
     }
 
     async function adjustEconomy() {
@@ -777,7 +795,7 @@
 
       showThinkingIndicator();
 
-      const payload = { message: text, api_key: savedKey, model: getSelectedModel() };
+      const payload = { message: text, api_key: savedKey, model: getSelectedModel(), thinking_level: getThinkingLevel() };
       if (customRules) payload.custom_rules = customRules;
       if (pendingImage) {
         payload.image_base64 = pendingImage.base64;
