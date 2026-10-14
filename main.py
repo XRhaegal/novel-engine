@@ -61,6 +61,7 @@ class ChatRequest(BaseModel):
     image_mime: Optional[str] = None     # p.ej. "image/jpeg", "image/png"
     custom_rules: Optional[str] = None   # Reglas del autor, puestas desde Configuración (no desde el Main).
     thinking_level: Optional[str] = "low"  # "low" | "medium" | "high" — más bajo = respuestas más rápidas.
+    mature_mode: Optional[bool] = False    # Si está encendido, baja el filtro de contenido a su nivel más permisivo.
 
 
 class SetHistoryRequest(BaseModel):
@@ -915,13 +916,25 @@ def chat(req: ChatRequest):
                 if level not in ("low", "medium", "high"):
                     level = "low"  # "minimal" solo existe en Flash; evitamos que truene en el fallback a Pro.
 
+                config_kwargs = {
+                    "system_instruction": system_instruction_full,
+                    "thinking_config": types.ThinkingConfig(thinking_level=level)
+                }
+                if req.mature_mode:
+                    # Nivel más permisivo disponible por categoría — Google conserva, aparte de
+                    # esto, bloqueos que no se pueden apagar (nada que aplique a ficción adulta
+                    # normal entre personajes adultos, pero existen igual).
+                    config_kwargs["safety_settings"] = [
+                        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+                    ]
+
                 response = client.models.generate_content(
                     model=model_name,
                     contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction_full,
-                        thinking_config=types.ThinkingConfig(thinking_level=level)
-                    )
+                    config=types.GenerateContentConfig(**config_kwargs)
                 )
                 clean_text, new_economy_state, movements = apply_economy_tags(response.text)
                 warnings = lint_response(clean_text)
