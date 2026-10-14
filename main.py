@@ -60,6 +60,7 @@ class ChatRequest(BaseModel):
     image_base64: Optional[str] = None   # Imagen adjunta por el autor, solo para este turno.
     image_mime: Optional[str] = None     # p.ej. "image/jpeg", "image/png"
     custom_rules: Optional[str] = None   # Reglas del autor, puestas desde Configuración (no desde el Main).
+    thinking_level: Optional[str] = "low"  # "low" | "medium" | "high" — más bajo = respuestas más rápidas.
 
 
 class SetHistoryRequest(BaseModel):
@@ -910,11 +911,16 @@ def chat(req: ChatRequest):
     for model_name in models_to_try:
         for attempt in range(2):
             try:
+                level = (req.thinking_level or "low").lower()
+                if level not in ("low", "medium", "high"):
+                    level = "low"  # "minimal" solo existe en Flash; evitamos que truene en el fallback a Pro.
+
                 response = client.models.generate_content(
                     model=model_name,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction=system_instruction_full
+                        system_instruction=system_instruction_full,
+                        thinking_config=types.ThinkingConfig(thinking_level=level)
                     )
                 )
                 clean_text, new_economy_state, movements = apply_economy_tags(response.text)
