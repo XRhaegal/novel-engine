@@ -369,6 +369,11 @@
         <span class="block text-[10.5px] text-[color:var(--manila-dim)] mt-1 italic">Se aplican en cada generación junto con el Main — si chocan con él, estas ganan.</span>
       </div>
 
+      <label class="flex items-center justify-between gap-2 cursor-pointer border border-[color:var(--seam)] rounded-lg px-3 py-2">
+        <span class="text-[12.5px] text-[color:var(--manila)]">Modo adulto (sin filtro de contenido)</span>
+        <input type="checkbox" id="input-mature-mode" class="w-4 h-4 accent-[color:var(--rust)]">
+      </label>
+
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-[13px] text-[color:var(--manila-dim)] hover:text-[color:var(--manila)]">Cerrar</button>
         <button onclick="saveSettings()" class="bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold text-[13px] px-3.5 py-1.5 rounded-lg">Guardar</button>
@@ -382,12 +387,14 @@
     let ghOwner = localStorage.getItem('GH_OWNER') || 'XRhaegal';
     let ghRepo = localStorage.getItem('GH_REPO') || 'novel-engine';
     let customRules = localStorage.getItem('CUSTOM_RULES') || '';
+    let matureMode = localStorage.getItem('MATURE_MODE') === 'true';
 
     document.getElementById('input-api-key').value = savedKey;
     document.getElementById('input-gh-token').value = ghToken;
     document.getElementById('input-gh-owner').value = ghOwner;
     document.getElementById('input-gh-repo').value = ghRepo;
     document.getElementById('input-custom-rules').value = customRules;
+    document.getElementById('input-mature-mode').checked = matureMode;
     window.addEventListener('DOMContentLoaded', () => {
       const saved = localStorage.getItem('THINKING_LEVEL');
       if (saved) document.getElementById('thinking-select').value = saved;
@@ -527,6 +534,8 @@
       ghOwner = document.getElementById('input-gh-owner').value.trim();
       ghRepo = document.getElementById('input-gh-repo').value.trim();
       customRules = document.getElementById('input-custom-rules').value.trim();
+      matureMode = document.getElementById('input-mature-mode').checked;
+      localStorage.setItem('MATURE_MODE', matureMode);
 
       localStorage.setItem('GEMINI_USER_KEY', savedKey);
       localStorage.setItem('GH_TOKEN', ghToken);
@@ -797,6 +806,7 @@
 
       const payload = { message: text, api_key: savedKey, model: getSelectedModel(), thinking_level: getThinkingLevel() };
       if (customRules) payload.custom_rules = customRules;
+      if (matureMode) payload.mature_mode = true;
       if (pendingImage) {
         payload.image_base64 = pendingImage.base64;
         payload.image_mime = pendingImage.mime;
