@@ -108,15 +108,42 @@
     .prose-scene-break { display: flex; justify-content: center; gap: 7px; margin: 0.9rem 0; }
     .prose-scene-break span { width: 3px; height: 3px; border-radius: 50%; background: var(--manila-dim); align-self: center; }
 
-    /* Editar / copiar / borrar se quedan accesibles mientras el mensaje
-       siga visible en pantalla, sin importar cuánto hayas bajado leyendo. */
-    .msg-toolbar {
+    /* Editar / copiar / borrar: una pastillita fija en la esquina superior
+       derecha del mensaje, que se queda pegada ahí mientras ese mensaje
+       siga visible, sin importar cuánto hayas bajado leyendo. */
+    .msg-sticky-rail {
       position: sticky;
       top: 52px; /* justo debajo del header fijo */
       z-index: 15;
-      padding: 4px 0;
-      backdrop-filter: blur(3px);
-      background: linear-gradient(to bottom, rgba(26,21,16,0.92) 70%, transparent);
+      height: 0;
+      overflow: visible;
+      display: flex;
+      justify-content: flex-end;
+      pointer-events: none;
+    }
+    .msg-actions-pill {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      margin-top: -26px; /* la mete a la altura del nombre, no debajo */
+      background: var(--bark-deep);
+      border: 1px solid var(--seam);
+      border-radius: 999px;
+      padding: 2px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      opacity: 0.88;
+    }
+    .msg-actions-pill:hover { opacity: 1; }
+
+    /* El mismo recuadro del mensaje se vuelve editable in situ — nada de
+       ventana aparte — y crece con el texto hasta 1/3 de pantalla. */
+    .msg-editing {
+      outline: 1.5px solid var(--rust);
+      outline-offset: 4px;
+      border-radius: 4px;
+      overflow-y: auto;
+      white-space: pre-wrap;
     }
 
     .bubble-user {
@@ -312,7 +339,7 @@
           <button onclick="triggerAttach()" title="Adjuntar imagen o archivo" class="p-2.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] border border-[color:var(--seam)] rounded-lg h-[48px] w-[44px] flex items-center justify-center shrink-0 transition">
             <svg class="icon" viewBox="0 0 24 24"><path d="M16 6 7.5 14.5a3 3 0 1 0 4.2 4.2L19 11.4a5 5 0 1 0-7-7L4.5 11.9"/></svg>
           </button>
-          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed"></textarea>
+          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed overflow-y-auto" style="max-height: 33vh;" oninput="autoGrow(this)"></textarea>
           <button onclick="sendTurn()" id="btn-send" class="varnish stacked-shadow bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold px-4 rounded-lg text-[13px] transition h-[48px] flex items-center justify-center shrink-0 gap-1.5">
             <span id="send-label" class="flex items-center gap-1.5">
               <svg class="icon" viewBox="0 0 24 24" style="stroke:#1a1510"><path d="M4 12 19 5l-6 14-2.5-6L4 12Z"/></svg>
@@ -917,6 +944,14 @@
     const ICON_STAMP = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><circle cx="12" cy="10" r="6.5"/><path d="M9 10.5l2 2 4-4.3"/><path d="M8 19h8"/><path d="M12 16.5V19"/></svg>`;
     const ICON_EDIT = `<svg class="icon" style="width:13px;height:13px" viewBox="0 0 24 24"><path d="M16 4l4 4-11 11H5v-4L16 4Z"/></svg>`;
 
+    /** Crece cualquier textarea/campo editable según lo que escribas,
+     * topado a 1/3 de la altura de pantalla (después, scroll interno). */
+    function autoGrow(el) {
+      const maxH = window.innerHeight / 3;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, maxH) + 'px';
+    }
+
     function escapeHtml(str) {
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
@@ -996,23 +1031,24 @@
       const roleColor = role === 'user' ? 'text-[color:var(--rust)]' : (role === 'error' ? 'text-[#e0a89f]' : 'text-[color:var(--rust)]/90');
 
       wrapper.innerHTML = `
-        <div class="msg-toolbar flex items-center justify-between mb-1">
+        <div class="mb-1">
           <span class="text-[12px] font-semibold ${roleColor}">${sender}</span>
-          <div class="flex items-center gap-0.5 opacity-60 hover:opacity-100 transition">
+        </div>
+        <div class="msg-sticky-rail">
+          <div class="msg-actions-pill">
             ${role === 'user' ? `
-            <button onclick="startEditMessage(${idx})" title="Editar y regenerar" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded">
+            <button onclick="startEditMessage(${idx})" title="Editar y regenerar" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded-full">
               ${ICON_EDIT}
             </button>` : ''}
-            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] rounded">
+            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] rounded-full">
               ${ICON_COPY}
             </button>
-            <button onclick="deleteMessage(${idx})" title="Descartar turno" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[#c96a5a] rounded">
+            <button onclick="deleteMessage(${idx})" title="Descartar turno" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[#c96a5a] rounded-full">
               ${ICON_CUT}
             </button>
           </div>
         </div>
         <div id="msg-text-${idx}" class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed space-y-3">${formatProse(text)}</div>
-        <div id="msg-edit-${idx}" class="hidden"></div>
         ${warningsHtml}
         ${actionsHtml}
       `;
@@ -1031,29 +1067,54 @@
 
     function startEditMessage(idx) {
       const textDiv = document.getElementById(`msg-text-${idx}`);
-      const editDiv = document.getElementById(`msg-edit-${idx}`);
       const original = sessionHistory[idx].text;
 
-      textDiv.classList.add('hidden');
-      editDiv.classList.remove('hidden');
-      editDiv.innerHTML = `
-        <textarea id="edit-box-${idx}" class="w-full bg-[color:var(--bark)] border border-[color:var(--rust)] rounded-md p-2 text-[14px] text-[color:var(--manila)] prose-font resize-y" rows="3">${original}</textarea>
-        <div class="flex justify-end gap-2 mt-1.5">
-          <button onclick="cancelEditMessage(${idx})" class="text-[12px] text-[color:var(--manila-dim)] px-2 py-1">Cancelar</button>
-          <button onclick="confirmEditMessage(${idx})" class="text-[12px] bg-[color:var(--rust)] text-[color:var(--bark)] font-semibold px-3 py-1 rounded-md">Guardar y regenerar</button>
-        </div>
+      // Guarda el HTML con formato para poder restaurarlo si cancela.
+      textDiv.dataset.formattedBackup = textDiv.innerHTML;
+
+      textDiv.innerText = original; // texto plano, sin formato de diálogo/capítulo mientras edita
+      textDiv.contentEditable = "true";
+      textDiv.classList.add('msg-editing');
+      textDiv.oninput = () => autoGrow(textDiv);
+      autoGrow(textDiv);
+      textDiv.focus();
+
+      // Mueve el cursor al final del texto.
+      const range = document.createRange();
+      range.selectNodeContents(textDiv);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // Botones de confirmar/cancelar, justo debajo del mismo recuadro.
+      const controls = document.createElement('div');
+      controls.id = `msg-edit-controls-${idx}`;
+      controls.className = "flex justify-end gap-2 mt-1.5";
+      controls.innerHTML = `
+        <button onclick="cancelEditMessage(${idx})" class="text-[12px] text-[color:var(--manila-dim)] px-2 py-1">Cancelar</button>
+        <button onclick="confirmEditMessage(${idx})" class="text-[12px] bg-[color:var(--rust)] text-[color:var(--bark)] font-semibold px-3 py-1 rounded-md">Guardar y regenerar</button>
       `;
+      textDiv.insertAdjacentElement('afterend', controls);
     }
 
     function cancelEditMessage(idx) {
-      document.getElementById(`msg-text-${idx}`).classList.remove('hidden');
-      document.getElementById(`msg-edit-${idx}`).classList.add('hidden');
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      textDiv.contentEditable = "false";
+      textDiv.classList.remove('msg-editing');
+      textDiv.style.maxHeight = '';
+      textDiv.innerHTML = textDiv.dataset.formattedBackup || formatProse(sessionHistory[idx].text);
+      const controls = document.getElementById(`msg-edit-controls-${idx}`);
+      if (controls) controls.remove();
     }
 
     async function confirmEditMessage(idx) {
-      const newText = document.getElementById(`edit-box-${idx}`).value.trim();
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      const newText = textDiv.innerText.trim();
+      const controls = document.getElementById(`msg-edit-controls-${idx}`);
       if (!newText) return;
       if (!confirm("Esto descarta todo lo escrito después de este mensaje y genera una respuesta nueva. ¿Continuar?")) return;
+      if (controls) controls.remove();
 
       // 1) Recortar la sesión de la UI: todo lo de antes de idx se queda, el resto se va.
       sessionHistory = sessionHistory.slice(0, idx);
