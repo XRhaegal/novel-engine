@@ -884,9 +884,27 @@ def chat(req: ChatRequest):
             "si alguna choca con el Main, gana esta)\n" + req.custom_rules.strip()
         )
 
-    system_instruction_full = f"{main_prompt}\n\n{economy_block}\n\n{custom_rules_block}\n\n{dynamic_canon}"
-
     history = load_chat_history()
+
+    # El servidor SÍ sabe con certeza si este es el primer turno de un capítulo nuevo
+    # o una continuación — se lo dice explícito al modelo en vez de dejarlo a su
+    # interpretación de "al inicio de cada nuevo día" (eso es lo que estaba causando
+    # que repitiera el encabezado de capítulo y el dato curioso en cada respuesta).
+    if len(history) == 0:
+        chapter_state_block = (
+            "## ESTADO DEL CAPÍTULO: este es el PRIMER turno del capítulo en curso. "
+            "Sí corresponde abrir con el encabezado de capítulo completo y el "
+            "[Dato Curioso Del Día] (Sección 19.2 del Main)."
+        )
+    else:
+        chapter_state_block = (
+            "## ESTADO DEL CAPÍTULO: esto es una CONTINUACIÓN del capítulo ya abierto "
+            "(ya llevas turnos en esta misma conversación). NO repitas el encabezado "
+            "de capítulo (CAPÍTULO N...) ni generes un nuevo [Dato Curioso Del Día] — "
+            "esos ya se mostraron al abrir el capítulo. Continúa la prosa directamente."
+        )
+
+    system_instruction_full = f"{main_prompt}\n\n{economy_block}\n\n{chapter_state_block}\n\n{custom_rules_block}\n\n{dynamic_canon}"
 
     image_bytes = None
     history_note = req.message
