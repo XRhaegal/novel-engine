@@ -10,16 +10,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* Tierra y corteza, no negro con un acento */
-      --bark:        #1c1611;
-      --bark-raised: #241c15;
-      --bark-deep:   #15100c;
-      --seam:        #392c1f;
-      --rust:        #ad4a22;   /* tinta de sello, única acción primaria */
-      --rust-deep:   #7f3517;
-      --moss:        #56693f;  /* confirmación del sistema, nada más */
-      --manila:      #e4d6b4;  /* papel viejo, texto de lectura */
-      --manila-dim:  #b8a688; /* antes era semitransparente y daba solo 2.95:1 de contraste — ahora 7.55:1 */
+      /* Tierra y corteza, con separación real de luminancia (se ve igual
+         con la pantalla a la mitad de brillo, no solo con el cel al 100%). */
+      --bark:        #120d09;  /* fondo general de la app, el más oscuro */
+      --bark-raised: #513d26;  /* panel/burbuja — relleno real, no solo una línea */
+      --bark-deep:   #0a0705;  /* header/footer, enmarca con más profundidad */
+      --seam:        #7a6038;  /* bordes, visibles de verdad */
+      --rust:        #d4672a;  /* tinta de sello, acción primaria — más vivo que antes */
+      --rust-deep:   #a84d1f;
+      --gold:        #e0ab47;  /* acento secundario: capítulos, cortes de escena, detalles */
+      --moss:        #86a369;  /* confirmación del sistema — más vivo */
+      --manila:      #f3e6c8;  /* papel viejo, texto de lectura */
+      --manila-dim:  #c9b28c;  /* secundario, contraste real ~5:1 contra los paneles */
     }
     html, body { height: 100%; }
     body {
@@ -32,17 +34,17 @@
 
     .grain {
       background-image:
-        radial-gradient(ellipse at 50% 35%, rgba(228,214,180,0.035) 0%, transparent 60%),
-        radial-gradient(circle at 85% 80%, rgba(228,214,180,0.015) 0%, transparent 50%);
+        radial-gradient(ellipse at 50% 30%, rgba(224,171,71,0.09) 0%, transparent 60%),
+        radial-gradient(circle at 85% 80%, rgba(212,103,42,0.06) 0%, transparent 55%);
     }
-    /* Viñeta de lámpara de escritorio: foco cálido al centro, bordes se apagan */
+    /* Viñeta de lámpara de escritorio: foco cálido al centro, bordes se apagan de verdad */
     .grain::after {
       content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, transparent 0%, rgba(10,8,6,0.35) 100%);
+      background: radial-gradient(ellipse 85% 65% at 50% 0%, transparent 0%, rgba(5,3,2,0.55) 100%);
     }
-    /* Fibra de papel real vía ruido SVG, tinte cálido, muy discreta */
+    /* Fibra de papel real vía ruido SVG, ahora visible incluso a brillo bajo */
     .paper-fiber {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.05; mix-blend-mode: overlay;
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.11; mix-blend-mode: overlay;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
     }
 
@@ -89,24 +91,25 @@
     .prose-narration { margin: 0; }
     .prose-dialogue {
       margin: 0;
-      padding-left: 10px;
-      border-left: 2px solid var(--rust-dim, var(--rust));
-      opacity: 0.96;
+      padding: 2px 0 2px 11px;
+      border-left: 3px solid var(--gold);
+      background: linear-gradient(90deg, rgba(224,171,71,0.08), transparent 70%);
     }
 
-    /* Encabezado de capítulo: deja de ser texto plano perdido en el párrafo. */
-    .prose-chapter-header { text-align: center; margin: 1.1rem 0 1.3rem; }
-    .prose-chapter-rule { height: 1px; width: 56px; margin: 0.5rem auto; background: var(--seam); }
+    /* Encabezado de capítulo: dorado, para que no compita con el rojo de las acciones. */
+    .prose-chapter-header { text-align: center; margin: 1.2rem 0 1.4rem; }
+    .prose-chapter-rule { height: 2px; width: 64px; margin: 0.55rem auto; background: var(--gold); border-radius: 2px; opacity: 0.8; }
     .prose-chapter-title {
       font-family: 'Barlow Condensed', sans-serif;
-      font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-      font-size: 15px; color: var(--rust);
+      font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      font-size: 16px; color: var(--gold);
+      text-shadow: 0 0 14px rgba(224,171,71,0.35);
     }
-    .prose-chapter-sub { font-size: 11.5px; color: var(--manila-dim); font-style: italic; margin-top: 2px; }
+    .prose-chapter-sub { font-size: 12px; color: var(--manila-dim); font-style: italic; margin-top: 3px; }
 
-    /* Corte de escena ( * * * ): un ornamento discreto, no asteriscos sueltos. */
-    .prose-scene-break { display: flex; justify-content: center; gap: 7px; margin: 0.9rem 0; }
-    .prose-scene-break span { width: 3px; height: 3px; border-radius: 50%; background: var(--manila-dim); align-self: center; }
+    /* Corte de escena ( * * * ): un ornamento dorado, no asteriscos sueltos. */
+    .prose-scene-break { display: flex; justify-content: center; gap: 8px; margin: 1rem 0; }
+    .prose-scene-break span { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); align-self: center; opacity: 0.85; }
 
     /* Editar / copiar / borrar: una pastillita fija en la esquina superior
        derecha del mensaje, que se queda pegada ahí mientras ese mensaje
@@ -147,18 +150,18 @@
     }
 
     .bubble-user {
-      background: linear-gradient(180deg, rgba(173,74,34,0.10), rgba(173,74,34,0.02));
-      border: 1px solid rgba(173,74,34,0.28);
-      box-shadow: 0 6px 14px -9px rgba(0,0,0,0.5);
+      background: linear-gradient(165deg, rgba(212,103,42,0.26), rgba(212,103,42,0.09));
+      border: 1px solid rgba(212,103,42,0.55);
+      box-shadow: 0 6px 16px -9px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,180,0.08);
     }
     .bubble-ai {
-      background: var(--bark-raised);
+      background: linear-gradient(165deg, var(--bark-raised), #3c2d1b);
       border: 1px solid var(--seam);
-      box-shadow: 0 1px 0 rgba(228,214,180,0.03) inset, 0 8px 16px -10px rgba(0,0,0,0.5);
+      box-shadow: 0 1px 0 rgba(243,230,200,0.06) inset, 0 10px 20px -10px rgba(0,0,0,0.6);
     }
     .bubble-error {
-      background: rgba(160,50,40,0.09);
-      border: 1px solid rgba(160,50,40,0.4);
+      background: linear-gradient(165deg, rgba(196,70,56,0.22), rgba(196,70,56,0.08));
+      border: 1px solid rgba(224,110,95,0.6);
     }
 
     .ledger-figure { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
