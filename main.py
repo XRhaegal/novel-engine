@@ -37,8 +37,8 @@ STORY_FILE = "story_state.json"                 # Estado vivo del protagonista (
 # Documentos de apoyo que SIEMPRE van completos (no pasan por embeddings, son chicos y estables).
 STATIC_DOCS = ["Resumenes_por_Capitulo.md", "Ficha_Voz_Personajes.md", "Biblia_Continuidad.md"]
 
-TOP_K_SEMANTIC = 6          # Cuántos fragmentos antiguos relevantes se traen por significado.
-RECENT_CHAPTERS_COUNT = 3   # Capítulos recientes que SIEMPRE van completos (rutinas, lugares, objetos frescos).
+TOP_K_SEMANTIC = 8          # Cuántos fragmentos antiguos relevantes se traen por significado.
+RECENT_CHAPTERS_COUNT = 5   # Capítulos recientes de prosa que SIEMPRE van completos (ubicaciones, distancias, objetos, rutinas).
 CHUNK_MAX_CHARS = 900       # Tamaño aproximado de cada fragmento al trocear un capítulo.
 
 # Nombres del elenco, para el linter de vocativos de relleno.
@@ -355,7 +355,10 @@ def get_recent_and_relevant_canon(client, query: str) -> str:
     """Reemplazo directo de la función vieja de palabras sueltas.
     - Los últimos 2 capítulos van completos, siempre (fidelidad de voz/tono).
     - Todo lo demás se busca por significado real contra el índice de embeddings."""
-    valid_files = get_canon_files_sorted()
+    # Solo capítulos REALES de prosa (sin CS ni fichas): los CONTINUITY STATE
+    # ya viven en la Sección 15 del Main, y sin esto un CS podía empujar
+    # fuera del contexto al capítulo mismo.
+    valid_files = get_chapter_files_sorted()
     if not valid_files:
         return ""
 
