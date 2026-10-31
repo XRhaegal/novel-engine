@@ -32,6 +32,7 @@ SESSION_FILE = "active_session.json"          # Historial de burbujas para la UI
 CHAT_HISTORY_FILE = "chat_history.json"       # Historial real que se manda al modelo para generar (nuevo).
 INDEX_FILE = "canon_index.json"               # Índice de fragmentos + embeddings de todo el canon (nuevo).
 ECONOMY_FILE = "economy_state.json"           # Saldo real, calculado por Python, nunca por el modelo (nuevo).
+STORY_FILE = "story_state.json"                 # Estado vivo del protagonista (Python puro, nuevo).
 
 # Documentos de apoyo que SIEMPRE van completos (no pasan por embeddings, son chicos y estables).
 STATIC_DOCS = ["Resumenes_por_Capitulo.md", "Ficha_Voz_Personajes.md", "Biblia_Continuidad.md"]
@@ -96,6 +97,12 @@ class UndoChapterRequest(BaseModel):
     chapter_num: str
 
 
+class CalibrateRequest(BaseModel):
+    github_token: Optional[str] = None
+    repo_owner: Optional[str] = None
+    repo_name: Optional[str] = None
+
+
 # ----------------------------------------------------------------------
 # Utilidades básicas (cliente Gemini, Main prompt, GitHub)
 # ----------------------------------------------------------------------
@@ -136,6 +143,23 @@ def get_static_docs_block() -> str:
 def extract_chapter_number(filepath: str) -> int:
     match = re.search(r'(\d+)', os.path.basename(filepath))
     return int(match.group(1)) if match else 0
+
+
+CHAPTER_FILE_RE = re.compile(r"cap[ií]tulo\s*(\d+)\.txt$", re.IGNORECASE)
+CS_FILE_RE = re.compile(r"CONTINUITY", re.IGNORECASE)
+
+
+def is_cs_file(path: str) -> bool:
+    """¿Es un CONTINUITY STATE? No cuenta como capítulo de prosa."""
+    return bool(CS_FILE_RE.search(os.path.basename(path)))
+
+
+def is_chapter_file(path: str) -> bool:
+    """Capítulo real de prosa: 'Capitulo N.txt' / 'capitulo n.txt' (sin CS, sin fichas)."""
+    base = os.path.basename(path)
+    return not is_cs_file(path) and bool(CHAPTER_FILE_RE.search(base))
+
+
 
 
 def get_file_sha(token: str, owner: str, repo: str, path: str) -> Optional[str]:
@@ -309,9 +333,22 @@ def save_index(index: List[Dict[str, Any]]):
 
 def get_canon_files_sorted() -> List[str]:
     files = glob.glob("canon/**/*.*", recursive=True)
-    valid_files = [f for f in files if os.path.isfile(f) and not f.endswith(".py")]
+    valid_files = [
+        f for f in files
+        if os.path.isfile(f) and not f.endswith(".py") and not f.endswith(".json")
+    ]
     valid_files.sort(key=extract_chapter_number)
     return valid_files
+
+
+def get_cs_files_sorted() -> List[str]:
+    """Solo los CONTINUITY STATE, en orden de capítulo."""
+    return [f for f in get_canon_files_sorted() if is_cs_file(f)]
+
+
+def get_chapter_files_sorted() -> List[str]:
+    """Solo capítulos reales de prosa (los CS y fichas ya no se cuentan)."""
+    return [f for f in get_canon_files_sorted() if is_chapter_file(f)]
 
 
 def get_recent_and_relevant_canon(client, query: str) -> str:
@@ -406,6 +443,220 @@ def load_economy() -> Dict[str, float]:
 def save_economy(state: Dict[str, float]):
     with open(ECONOMY_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
+
+# ----------------------------------------------------------------------
+# Estado vivo desde el CONTINUITY STATE (Python puro: cero cuota de Gemini)
+# ----------------------------------------------------------------------
+
+CS_SECTION_PATTERNS = [
+    ("edson", re.compile(r"^EDSON\s*$", re.IGNORECASE)),
+    ("personajes", re.compile(r"^PERSONAJES PRESENTES.*$", re.IGNORECASE)),
+    ("eventos", re.compile(r"^EVENTOS DEL CAP[IÍ]TULO\s*$", re.IGNORECASE)),
+    ("economia", re.compile(r"^ECONOM[IÍ]A AL CIERRE.*$", re.IGNORECASE)),
+    ("objetos", re.compile(r"^OBJETOS\s*$", re.IGNORECASE)),
+    ("relaciones", re.compile(r"^RELACIONES\s*$", re.IGNORECASE)),
+    ("hilos", re.compile(r"^HILOS ABIERTOS\s*$", re.IGNORECASE)),
+]
+
+CS_MONEY_RE = re.compile(r"\$\s?([\d,]+(?:\.\d{1,2})?)")
+
+
+def _money_to_float(s: str) -> float:
+    try:
+        return float(s.replace(",", ""))
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def parse_cs_text(text: str) -> Dict[str, Any]:
+    """Parsea un CONTINUITY STATE completo con Python puro (sin Gemini).
+    Tolera variaciones: si una sección no existe, regresa vacía."""
+    lines = [l.rstrip() for l in text.splitlines()]
+
+    cap_num = None
+    for l in lines[:5]:
+        m = re.search(r"CAP[IÍ]TULO\s*(\d+)", l, re.IGNORECASE)
+        if m:
+            cap_num = int(m.group(1))
+            break
+
+    meta = {"fecha": None, "hora": None, "ubicacion": None}
+    sections: Dict[str, List[str]] = {}
+    current = "intro"
+    for raw in lines:
+        line = raw.strip().strip("═").strip()
+        if not line:
+            continue
+        if line.startswith("FECHA:"):
+            meta["fecha"] = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("HORA:"):
+            meta["hora"] = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("UBICACIÓN:") or line.startswith("UBICACION:"):
+            meta["ubicacion"] = line.split(":", 1)[1].strip()
+            continue
+        matched = None
+        for name, pat in CS_SECTION_PATTERNS:
+            if pat.match(line):
+                matched = name
+                break
+        if matched:
+            current = matched
+            sections.setdefault(current, [])
+            continue
+        sections.setdefault(current, []).append(raw)
+
+    # --- EDSON (estado del protagonista) ---
+    edson: Dict[str, Any] = {}
+    key = None
+    for l in sections.get("edson", []):
+        s = l.strip()
+        m = re.match(r"-\s*([^:]+):\s*(.*)$", s)
+        if m and not s.startswith("*"):
+            key = m.group(1).strip().lower()
+            edson[key] = m.group(2).strip()
+            continue
+        if s.startswith("*") or re.match(r"^\d+\.\s", s):
+            k = key or "detalle"
+            if not isinstance(edson.get(k), list):
+                edson[k] = []
+            edson[k].append(s.lstrip("* ").strip())
+
+    # --- PERSONAJES PRESENTES ---
+    personajes: Dict[str, Dict[str, Any]] = {}
+    cur_char = None
+    for l in sections.get("personajes", []):
+        s = l.strip()
+        m = re.match(r"^\d+\.\s*(.+)$", s)
+        if m:
+            cur_char = m.group(1).strip()
+            personajes[cur_char] = {"capitulo": cap_num}
+            continue
+        m = re.match(r"-\s*([^:]+):\s*(.*)$", s)
+        if m and cur_char:
+            personajes[cur_char][m.group(1).strip().lower()] = m.group(2).strip()
+
+    # --- ECONOMÍA AL CIERRE ---
+    economia: Dict[str, Any] = {
+        "saldo_inicial": None, "gastos": [], "ingresos": [], "saldo_final": None
+    }
+    modo = None
+    for l in sections.get("economia", []):
+        s = l.strip()
+        m = re.match(r"-\s*[Ss]aldo inicial[^:]*:\s*", s)
+        if m:
+            found = CS_MONEY_RE.search(s)
+            if found:
+                economia["saldo_inicial"] = _money_to_float(found.group(1))
+            continue
+        m = re.match(r"-\s*[Ss]aldo final[^:]*:\s*", s)
+        if m:
+            found = CS_MONEY_RE.search(s)
+            if found:
+                economia["saldo_final"] = _money_to_float(found.group(1))
+            continue
+        if re.match(r"-\s*[Gg]astos\s*:?\s*$", s):
+            modo = "gastos"
+            continue
+        if re.match(r"-\s*[Ii]ngresos\s*:?\s*$", s):
+            modo = "ingresos"
+            continue
+        m = re.match(r"\*\s*(.+)$", s)
+        if m and modo:
+            economia[modo].append(m.group(1).strip())
+    if economia["saldo_final"] is None:
+        all_amounts = CS_MONEY_RE.findall("\n".join(sections.get("economia", [])))
+        if all_amounts:
+            economia["saldo_final"] = _money_to_float(all_amounts[-1])
+
+    # --- RELACIONES (tablero de vínculos) ---
+    relaciones: Dict[str, Dict[str, Any]] = {}
+    for l in sections.get("relaciones", []):
+        s = l.strip()
+        m = re.match(r"\*\s*Con\s+([^:]+):\s*(.+)$", s, re.IGNORECASE)
+        if m:
+            nombre = m.group(1).strip()
+            relaciones[nombre] = {
+                "nivel": m.group(2).strip(),
+                "ultimo_hito": m.group(2).strip(),
+                "capitulo": cap_num
+            }
+    for nombre, data in personajes.items():
+        rel = data.get("relación con edson") or data.get("relacion con edson")
+        if rel and nombre not in relaciones:
+            relaciones[nombre] = {"nivel": rel, "ultimo_hito": rel, "capitulo": cap_num}
+
+    hilos = [l.strip().lstrip("- ").strip() for l in sections.get("hilos", []) if l.strip()]
+
+    return {
+        "capitulo": cap_num,
+        "fecha": meta["fecha"],
+        "hora": meta["hora"],
+        "ubicacion": meta["ubicacion"],
+        "edson": edson,
+        "personajes": personajes,
+        "relaciones": relaciones,
+        "economia": economia,
+        "hilos_abiertos": hilos,
+        "objetos": [l.strip() for l in sections.get("objetos", []) if l.strip()],
+        "eventos": [l.strip().lstrip("- ").strip() for l in sections.get("eventos", []) if l.strip()],
+    }
+
+
+def parse_cs_file(path: str) -> Optional[Dict[str, Any]]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return parse_cs_text(f.read())
+    except Exception as e:
+        print(f"Aviso: no se pudo parsear {path}: {e}")
+        return None
+
+
+def build_story_state() -> Dict[str, Any]:
+    """Estado vivo calculado al momento desde el CONTINUITY STATE más reciente."""
+    cs_files = get_cs_files_sorted()
+    chapters = get_chapter_files_sorted()
+    state: Dict[str, Any] = {
+        "actualizado": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "capitulo": None,
+        "fecha": None,
+        "hora": None,
+        "ubicacion": None,
+        "edson": {},
+        "relaciones": {},
+        "economia": {},
+        "hilos_abiertos": [],
+        "capitulos_reales": len(chapters),
+        "ultimo_capitulo": os.path.basename(chapters[-1]) if chapters else None,
+        "ultimo_cs": os.path.basename(cs_files[-1]) if cs_files else None,
+    }
+    if cs_files:
+        parsed = parse_cs_file(cs_files[-1])
+        if parsed:
+            state.update({
+                "capitulo": parsed["capitulo"],
+                "fecha": parsed["fecha"],
+                "hora": parsed["hora"],
+                "ubicacion": parsed["ubicacion"],
+                "edson": parsed["edson"],
+                "relaciones": parsed["relaciones"],
+                "economia": parsed["economia"],
+                "hilos_abiertos": parsed["hilos_abiertos"],
+            })
+    return state
+
+
+def save_story_state(extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    state = build_story_state()
+    if extra:
+        state.update(extra)
+    try:
+        with open(STORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Aviso: no se pudo guardar {STORY_FILE}: {e}")
+    return state
 
 
 def apply_economy_tags(text: str) -> (str, Dict[str, float], List[str]):
@@ -611,30 +862,40 @@ def sync_cache(payload: Optional[ChatRequest] = None):
 
 @app.get("/api/stats")
 def get_stats():
-    valid_files = get_canon_files_sorted()
+    chapters = get_chapter_files_sorted()
+    cs_files = get_cs_files_sorted()
     index = load_index()
     main_text = get_main_prompt()
     main_chars = len(main_text)
-    # Estimado grueso: ~4 caracteres por token en español, suficiente para una alerta, no para facturación.
     main_tokens_estimate = main_chars // 4
 
     warnings = []
     if main_chars > 60000:
         warnings.append("El Main ya pesa bastante — considera otra ronda de compresión en la Sección 15.5.")
-    if len(valid_files) >= 10:
-        oldest_untouched = len(valid_files) - 8
+    if len(chapters) >= 10:
+        oldest_untouched = len(chapters) - 8
         if oldest_untouched > 0:
             warnings.append(
-                f"Llevas {len(valid_files)} capítulos en canon/ — valora fusionar los más viejos "
+                f"Llevas {len(chapters)} capítulos en canon/ — valora fusionar los más viejos "
                 f"en Resumenes_por_Capitulo.md si aún no lo hiciste."
+            )
+    if chapters and cs_files:
+        cap_n = extract_chapter_number(chapters[-1])
+        cs_n = extract_chapter_number(cs_files[-1])
+        if cap_n > cs_n:
+            warnings.append(
+                f"El último capítulo es el {cap_n} pero el último CONTINUITY STATE es del {cs_n} — "
+                f"da clic en 'Calibrar' o cierra el capítulo para actualizar continuidad."
             )
 
     return {
-        "total_chapters": len(valid_files),
+        "total_chapters": len(chapters),
+        "total_cs": len(cs_files),
         "indexed_fragments": len(index),
         "main_chars": main_chars,
         "main_tokens_estimate": main_tokens_estimate,
-        "latest_chapter": os.path.basename(valid_files[-1]) if valid_files else None,
+        "latest_chapter": os.path.basename(chapters[-1]) if chapters else None,
+        "latest_cs": os.path.basename(cs_files[-1]) if cs_files else None,
         "warnings": warnings
     }
 
@@ -671,6 +932,119 @@ def search_canon(q: str, top_k: int = 8, api_key: Optional[str] = None):
             for s, e in top
         ]
     }
+
+
+@app.post("/api/calibrate")
+def calibrate(req: CalibrateRequest):
+    """Un solo botón: inventario REAL del canon + estado vivo + vínculos +
+    economía, todo parseado con Python puro (cero cuota de Gemini)."""
+    report = []
+
+    chapters = get_chapter_files_sorted()
+    cs_files = get_cs_files_sorted()
+    latest_chapter = chapters[-1] if chapters else None
+    latest_cs = cs_files[-1] if cs_files else None
+
+    report.append(f"Capítulos reales en canon/: {len(chapters)} (los CONTINUITY STATE ya no se cuentan como capítulos).")
+    report.append(f"Continuity States: {len(cs_files)}.")
+    report.append(f"Último capítulo: {os.path.basename(latest_chapter)}." if latest_chapter else "No hay capítulos todavía.")
+    report.append(f"Último CS: {os.path.basename(latest_cs)}." if latest_cs else "No hay CS todavía.")
+
+    # Verificación del Main (reglas): existe, pesa razonable y tiene secciones clave.
+    main_text = get_main_prompt()
+    main_issues = []
+    if not main_text.strip():
+        main_issues.append("main_instructions.txt está vacío o no existe.")
+    else:
+        for section in ("## 15.", "## 16."):
+            if section not in main_text:
+                main_issues.append(f"Falta la sección '{section}' en el Main.")
+        if len(main_text) > 60000:
+            main_issues.append("El Main pesa más de 60,000 caracteres — considera comprimirlo.")
+    if main_issues:
+        report.append("Main: " + " | ".join(main_issues))
+    else:
+        report.append(f"Main verificado: {len(main_text)} caracteres, secciones clave presentes.")
+
+    # Desfase capítulo/CS.
+    if chapters and cs_files:
+        cap_n = extract_chapter_number(latest_chapter)
+        cs_n = extract_chapter_number(latest_cs)
+        if cap_n > cs_n:
+            report.append(f"Aviso: el último capítulo es el {cap_n} pero el último CS es del {cs_n}.")
+
+    # Estado vivo desde el último CS (Python puro) + respaldo local.
+    state = save_story_state()
+
+    # Vínculos al tablero (links_state.json), sin Gemini.
+    if state.get("relaciones"):
+        links_state = {"personajes": {}, "ultima_actualizacion": None}
+        if os.path.exists("links_state.json"):
+            try:
+                with open("links_state.json", "r", encoding="utf-8") as f:
+                    links_state = json.load(f)
+            except Exception:
+                pass
+        links_state.setdefault("personajes", {}).update(state["relaciones"])
+        links_state["ultima_actualizacion"] = state.get("capitulo")
+        with open("links_state.json", "w", encoding="utf-8") as f:
+            json.dump(links_state, f, ensure_ascii=False, indent=2)
+        report.append(f"Tablero de vínculos actualizado con {len(state['relaciones'])} personajes (desde el CS, sin cuota).")
+
+    # Economía: solo si el CS declara un saldo final explícito.
+    saldo = (state.get("economia") or {}).get("saldo_final")
+    if saldo is not None:
+        economy_state = load_economy()
+        economy_state["mano"] = saldo
+        save_economy(economy_state)
+        report.append(f"Economía sincronizada con el CS: ${saldo:,.2f} en mano.")
+
+    # Respaldo en GitHub (opcional).
+    backed_up = False
+    if req.github_token and req.repo_owner and req.repo_name:
+        try:
+            commit_to_github(
+                req.github_token, req.repo_owner, req.repo_name,
+                STORY_FILE, json.dumps(state, ensure_ascii=False, indent=2),
+                "Calibración: respaldo del estado vivo (story_state.json)"
+            )
+            backed_up = True
+            report.append("story_state.json respaldado en GitHub.")
+        except Exception as e:
+            report.append(f"No se pudo respaldar en GitHub: {e}")
+    else:
+        report.append("Respaldo local listo (pon tu token de GitHub en Configuración para respaldar también en la nube).")
+
+    return {
+        "status": "success",
+        "message": "Calibración completa.",
+        "detalles": report,
+        "story_state": state,
+        "github_backup": backed_up,
+        "total_chapters": len(chapters),
+        "latest_chapter": os.path.basename(latest_chapter) if latest_chapter else None,
+        "latest_cs": os.path.basename(latest_cs) if latest_cs else None,
+        "main_issues": main_issues,
+    }
+
+
+@app.get("/api/story-state")
+def get_story_state():
+    """Estado vivo de Edson: se calcula al momento desde el último CS;
+    si algo falla, cae al respaldo story_state.json."""
+    try:
+        state = build_story_state()
+        if state.get("capitulo") is not None or state.get("ultimo_cs"):
+            return {"status": "ok", "fuente": "calculo_en_vivo", "state": state}
+    except Exception as e:
+        print(f"Aviso: cálculo en vivo falló ({e}); usando respaldo.")
+    if os.path.exists(STORY_FILE):
+        try:
+            with open(STORY_FILE, "r", encoding="utf-8") as f:
+                return {"status": "ok", "fuente": "respaldo", "state": json.load(f)}
+        except Exception:
+            pass
+    return {"status": "vacio", "fuente": "ninguna", "state": {}}
 
 
 @app.post("/api/undo-last-chapter")
@@ -857,6 +1231,18 @@ def auto_close_chapter(req: AutoCloseRequest):
     except Exception as e:
         print(f"Aviso: no se pudo respaldar el saldo: {e}")
 
+    # Estado vivo: recalcular y respaldar story_state.json al cerrar capítulo.
+    try:
+        state = save_story_state()
+        if req.github_token:
+            commit_to_github(
+                req.github_token, req.repo_owner, req.repo_name,
+                STORY_FILE, json.dumps(state, ensure_ascii=False, indent=2),
+                f"Estado vivo actualizado: Cap {req.chapter_num}"
+            )
+    except Exception as e:
+        print(f"Aviso: no se pudo actualizar el estado vivo: {e}")
+
     # Limpiar sesión activa e historial de generación al archivar el capítulo.
     if os.path.exists(SESSION_FILE):
         os.remove(SESSION_FILE)
@@ -977,7 +1363,13 @@ def chat(req: ChatRequest):
                     continue
                 break
 
+    if "RESOURCE_EXHAUSTED" in last_error or "429" in last_error or "quota" in last_error.lower():
+        raise HTTPException(
+            status_code=429,
+            detail="Cuota del modelo agotada (Free Tier). Cambia de modelo en el selector y vuelve a intentar."
+        )
     raise HTTPException(
         status_code=500,
         detail=f"Servidores de Google saturados en Free Tier: {last_error}"
     )
+
