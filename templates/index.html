@@ -238,6 +238,7 @@
     <div class="flex border-b border-[color:var(--seam)] shrink-0">
       <button onclick="switchDrawerTab('vinculos')" data-tab="vinculos" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--rust)] border-b-2 border-[color:var(--rust)]">Vínculos</button>
       <button onclick="switchDrawerTab('stats')" data-tab="stats" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Estadísticas</button>
+      <button onclick="switchDrawerTab('datos')" data-tab="datos" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Datos</button>
       <button onclick="switchDrawerTab('buscador')" data-tab="buscador" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Buscador</button>
     </div>
 
@@ -247,6 +248,8 @@
 
       <!-- Estadísticas -->
       <div id="tab-stats" class="drawer-panel hidden space-y-2.5"></div>
+      <!-- Datos -->
+      <div id="tab-datos" class="drawer-panel hidden space-y-2.5"></div>
 
       <!-- Buscador -->
       <div id="tab-buscador" class="drawer-panel hidden space-y-2.5">
@@ -294,9 +297,9 @@
       </select>
     </div>
     <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
-      <button onclick="syncCache(); toggleMobileMenu();" class="flex-1 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[13px] py-2 rounded-md font-medium transition border border-[color:var(--moss)]/35 flex items-center justify-center gap-1.5">
+      <button onclick="calibrateAll(); toggleMobileMenu();" class="flex-1 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[13px] py-2 rounded-md font-medium transition border border-[color:var(--moss)]/35 flex items-center justify-center gap-1.5">
         <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 16V6a2 2 0 0 1 2-2h9l5 5v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 9h5M8 13h8"/></svg>
-        Canon
+        Calibrar
       </button>
       <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
         <svg class="icon" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M18 7l-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg>
@@ -659,6 +662,7 @@
 
       if (tab === 'vinculos') loadLinksTab();
       if (tab === 'stats') loadStatsTab();
+      if (tab === 'datos') loadDatosTab();
     }
 
     async function loadLinksTab() {
@@ -694,6 +698,48 @@
       const box = document.getElementById('tab-stats');
       box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Cargando...</div>`;
       try {
+        const res = await fetch('/api/story-state');
+        const data = await res.json();
+        const s = data.state || {};
+        const e = s.edson || {};
+        if (!s.capitulo && !s.ultimo_cs) {
+          box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Aún no hay estado vivo. Da clic en "Calibrar" para calcularlo desde el último Continuity State.</div>`;
+          return;
+        }
+        const eco = s.economia || {};
+        const saldo = (eco.saldo_final != null) ? '$' + eco.saldo_final.toFixed(2) : '—';
+        const lista = arr => (Array.isArray(arr) ? arr : (arr ? [arr] : [])).map(x => `<li>${x}</li>`).join('');
+        box.innerHTML = `
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[13px] font-semibold text-[color:var(--rust)] mb-1">Edson — Cap. ${s.capitulo ?? '?'}</div>
+            <div class="text-[11px] text-[color:var(--manila-dim)]">${s.fecha || ''}${s.hora ? ' · ' + s.hora : ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila)] mt-1.5 leading-snug">${e['ubicación'] || ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-1 leading-snug">${e['estado físico'] || ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-1 leading-snug">${e['estado emocional'] || ''}</div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Cartera</div>
+            <div class="text-[12px] text-[color:var(--manila-dim)]">Saldo al cierre: <span class="ledger-figure text-[color:var(--rust)]">${saldo}</span></div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Objetivos</div>
+            <ul class="text-[11.5px] text-[color:var(--manila-dim)] list-disc pl-4 space-y-0.5">${lista(e['objetivos actuales'])}</ul>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Hilos abiertos</div>
+            <ul class="text-[11.5px] text-[color:var(--manila-dim)] list-disc pl-4 space-y-0.5">${lista(s.hilos_abiertos)}</ul>
+          </div>
+          <div class="text-[10px] text-[color:var(--manila-dim)]/70">Fuente: ${data.fuente || '—'} · actualizado ${s.actualizado || '—'}</div>
+        `;
+      } catch (err) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar el estado.</div>`;
+      }
+    }
+
+    async function loadDatosTab() {
+      const box = document.getElementById('tab-datos');
+      box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Cargando...</div>`;
+      try {
         const res = await fetch('/api/stats');
         const data = await res.json();
         const warningsHtml = (data.warnings || []).map(w =>
@@ -706,18 +752,59 @@
               <div class="text-[10px] text-[color:var(--manila-dim)]">Capítulos</div>
             </div>
             <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.total_cs ?? 0}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Continuity States</div>
+            </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
               <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.indexed_fragments}</div>
               <div class="text-[10px] text-[color:var(--manila-dim)]">Fragmentos</div>
             </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.capitulos_reales ?? data.total_chapters}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Canon real</div>
+            </div>
           </div>
           <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-[12px] text-[color:var(--manila-dim)]">
-            Main: ~${data.main_tokens_estimate.toLocaleString()} tokens estimados<br>
-            Último capítulo: ${data.latest_chapter || '—'}
+            Main: ~${(data.main_tokens_estimate || 0).toLocaleString()} tokens estimados<br>
+            Último capítulo: ${data.latest_chapter || '—'}<br>
+            Último CS: ${data.latest_cs || '—'}
           </div>
           ${warningsHtml}
         `;
-      } catch (e) {
+      } catch (err) {
         box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar.</div>`;
+      }
+    }
+
+    async function calibrateAll() {
+      showToast("Calibrando canon y estado vivo...");
+      const payload = {};
+      if (ghToken) {
+        payload.github_token = ghToken;
+        payload.repo_owner = ghOwner;
+        payload.repo_name = ghRepo;
+      }
+      try {
+        const res = await fetch('/api/calibrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || "Calibración completa.");
+          const detalles = (data.detalles || []).join('\n• ');
+          if (detalles) appendMessage("Calibración", '• ' + detalles, "assistant");
+          refreshEconomyChip(null);
+          loadLinksTab();
+          loadStatsTab();
+          const badge = document.getElementById('cache-badge');
+          if (badge) badge.classList.remove('hidden');
+        } else {
+          showToast("Error: " + (data.detail || "falló la calibración"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
       }
     }
 
@@ -859,6 +946,9 @@
             showToast("Caja: " + data.economy_movements.join(" · "));
           }
         } else {
+          if (res.status === 429) {
+            showToast("Se te acabó la cuota del modelo — cámbialo en Herramientas ▸ Modelo y reenvía.", true);
+          }
           appendMessage("Error", data.detail || "Fallo en el servidor.", "error");
         }
       } catch (err) {
@@ -1213,3 +1303,4 @@
   </script>
 </body>
 </html>
+
