@@ -1,0 +1,40 @@
+{
+  "actualizado": "2026-11-01 08:55:40",
+  "capitulo": 30,
+  "fecha": "Sábado, 14 de diciembre de 1985",
+  "hora": "22:30 hrs",
+  "ubicacion": "Cabaña de la loma este (propiedad de la señora Gable), cama de roble.",
+  "edson": {
+    "ubicación": "Cabaña de la loma este, descansando en su cama tras leer a Bradbury.",
+    "estado físico": "Excelente; musculatura firme y adaptada al trabajo rudo; sin dolores articulares ni secuelas del esguince.",
+    "estado emocional": "En paz, centrado y con un arraigo creciente; la charla profunda con Sabine disipó las dudas de pertenencia que lo venían rondando.",
+    "qué sabe": "",
+    "qué cree": "Cree que Sabine empieza a verlo como un igual y un confidente cercano, apreciando su compañía en un espacio que ella no abre a nadie más.",
+    "qué desconoce": "El estado exacto del litigio judicial contra Kallio-Vance en la capital y los movimientos corporativos que derivarán en la llegada de Ashley Graham en abril de 1986.",
+    "objetivos actuales": "",
+    "domingo 15 de diciembre": "descanso dominical en la cabaña / caserío.",
+    "lunes 16 de diciembre a las 07": "00 hrs: inicio de semana laboral en el aserradero con Iselin (flete de roble pesado)."
+  },
+  "relaciones": {},
+  "economia": {
+    "saldo_inicial": null,
+    "gastos": [],
+    "ingresos": [],
+    "saldo_final": null
+  },
+  "hilos_abiertos": [
+    "Domingo 15 de diciembre de 1985: día libre completo en el valle.",
+    "Lunes 16 de diciembre de 1985: inicio de semana laboral en el aserradero (07:00 hrs) con flete de roble pesado.",
+    "Inauguración del GALAXY ARCADE de Walt Miller el próximo fin de semana antes de Navidad.",
+    "Cocinar comida casera para llevarle a Sabine a la botica (compromiso asumido).",
+    "Viaje futuro a Alderbrook en el Mustang para buscar el equipo de sonido con Klara cuando el clima y los tiempos lo permitan.",
+    "Asentar el motor del Mustang y realizar el primer cambio de lubricante tras el despegue inicial.",
+    "Dictamen pendiente de las muestras de agua de Kallio-Vance enviadas a la capital.",
+    "CONSECUENCIAS PENDIENTES",
+    "Mantener la provisión de leña y víveres en la cabaña ante la inminente llegada de las grandes nevadas de diciembre.",
+    "Posible reacción de Kallio-Vance tras el cierre sostenido del paso de camiones por la corona de la presa."
+  ],
+  "capitulos_reales": 31,
+  "ultimo_capitulo": "Capitulo 31.txt",
+  "ultimo_cs": "CONTINUITY STATE — CAPÍTULO 30.txt"
+}
