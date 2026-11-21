@@ -1,1 +1,1439 @@
-<PLACEHOLDER
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cedar Creek · 1985</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Tierra y corteza, con separación real de luminancia (se ve igual
+         con la pantalla a la mitad de brillo, no solo con el cel al 100%). */
+      --bark:        #120d09;  /* fondo general de la app, el más oscuro */
+      --bark-raised: #513d26;  /* panel/burbuja — relleno real, no solo una línea */
+      --bark-deep:   #0a0705;  /* header/footer, enmarca con más profundidad */
+      --seam:        #7a6038;  /* bordes, visibles de verdad */
+      --rust:        #d4672a;  /* tinta de sello, acción primaria — más vivo que antes */
+      --rust-deep:   #a84d1f;
+      --gold:        #e0ab47;  /* acento secundario: capítulos, cortes de escena, detalles */
+      --moss:        #86a369;  /* confirmación del sistema — más vivo */
+      --manila:      #f3e6c8;  /* papel viejo, texto de lectura */
+      --manila-dim:  #c9b28c;  /* secundario, contraste real ~5:1 contra los paneles */
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Barlow Condensed', sans-serif;
+      background: var(--bark);
+      color: var(--manila);
+    }
+    .prose-font { font-family: 'Spectral', serif; font-style: normal; }
+    .prose-font em, .prose-font i { font-style: italic; }
+
+    .grain {
+      background-image:
+        radial-gradient(ellipse at 50% 30%, rgba(224,171,71,0.09) 0%, transparent 60%),
+        radial-gradient(circle at 85% 80%, rgba(212,103,42,0.06) 0%, transparent 55%);
+    }
+    /* Viñeta de lámpara de escritorio: foco cálido al centro, bordes se apagan de verdad */
+    .grain::after {
+      content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(ellipse 85% 65% at 50% 0%, transparent 0%, rgba(5,3,2,0.55) 100%);
+    }
+    /* Fibra de papel real vía ruido SVG, ahora visible incluso a brillo bajo */
+    .paper-fiber {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.11; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+    }
+
+    /* Sombra de papel apilado bajo luz cálida, no gris de UI */
+    .stacked-shadow {
+      box-shadow: 0 1px 0 rgba(228,214,180,0.04) inset, 0 8px 18px -10px rgba(0,0,0,0.55), 0 2px 4px -1px rgba(0,0,0,0.4);
+    }
+
+    /* Esquina doblada ("dog-ear") en la tarjeta de bienvenida */
+    .dog-ear { position: relative; }
+    .dog-ear::after {
+      content: ""; position: absolute; bottom: 0; right: 0; width: 22px; height: 22px;
+      background: linear-gradient(135deg, transparent 50%, var(--bark) 50%);
+      border-top-left-radius: 3px;
+      box-shadow: -2px -2px 4px -2px rgba(0,0,0,0.5);
+      border-bottom-right-radius: inherit;
+    }
+
+    /* Barniz diagonal sutil en el botón principal, tipo madera lacada */
+    .varnish { position: relative; overflow: hidden; }
+    .varnish::before {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,241,214,0.16) 48%, transparent 62%);
+      transform: translateX(-120%); transition: transform 0.55s ease;
+    }
+    .varnish:hover::before { transform: translateX(120%); }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--seam); border-radius: 3px; }
+
+    .icon { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; display: block; }
+    /* Iconos sólidos estilo sello de tinta: la forma queda en positivo,
+       con huecos recortados (fill-rule evenodd), como un sello real. */
+    .icon.solid { fill: currentColor; stroke: none; }
+
+    /* Cursor de máquina de escribir, en vez de puntos rebotando */
+    .typewriter-cursor {
+      display: inline-block; width: 7px; height: 14px; background: var(--rust);
+      animation: tw-blink 1s steps(1) infinite; margin-left: 2px; vertical-align: -2px;
+    }
+    @keyframes tw-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    @keyframes turn-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .turn-new { animation: turn-enter 0.38s cubic-bezier(.2,.7,.3,1) both; }
+
+    /* Narración vs. diálogo: el diálogo lleva un trazo propio a la izquierda
+       y respira un poco más, para que el ojo distinga quién habla de qué pasa. */
+    .prose-narration { margin: 0; }
+    .prose-dialogue {
+      margin: 0;
+      padding: 2px 0 2px 11px;
+      border-left: 3px solid var(--gold);
+      background: linear-gradient(90deg, rgba(224,171,71,0.08), transparent 70%);
+    }
+
+    /* Encabezado de capítulo: dorado, para que no compita con el rojo de las acciones. */
+    .prose-chapter-header { text-align: center; margin: 1.2rem 0 1.4rem; }
+    .prose-chapter-rule { height: 2px; width: 64px; margin: 0.55rem auto; background: var(--gold); border-radius: 2px; opacity: 0.8; }
+    .prose-chapter-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      font-size: 16px; color: var(--gold);
+      text-shadow: 0 0 14px rgba(224,171,71,0.35);
+    }
+    .prose-chapter-sub { font-size: 12px; color: var(--manila-dim); font-style: italic; margin-top: 3px; }
+
+    /* Corte de escena ( * * * ): un ornamento dorado, no asteriscos sueltos. */
+    .prose-scene-break { display: flex; justify-content: center; gap: 8px; margin: 1rem 0; }
+    .prose-scene-break span { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); align-self: center; opacity: 0.85; }
+
+    /* Editar / copiar / borrar: una pastillita fija en la esquina superior
+       derecha del mensaje, que se queda pegada ahí mientras ese mensaje
+       siga visible, sin importar cuánto hayas bajado leyendo. */
+    .msg-sticky-rail {
+      position: sticky;
+      top: 52px; /* justo debajo del header fijo */
+      z-index: 15;
+      height: 0;
+      overflow: visible;
+      display: flex;
+      justify-content: flex-end;
+      pointer-events: none;
+    }
+    .msg-actions-pill {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      margin-top: -26px; /* la mete a la altura del nombre, no debajo */
+      background: var(--bark-deep);
+      border: 1px solid var(--seam);
+      border-radius: 999px;
+      padding: 2px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      opacity: 0.88;
+    }
+    .msg-actions-pill:hover { opacity: 1; }
+
+    /* El mismo recuadro del mensaje se vuelve editable in situ — nada de
+       ventana aparte — y crece con el texto hasta 1/3 de pantalla. */
+    .msg-editing {
+      outline: 1.5px solid var(--rust);
+      outline-offset: 4px;
+      border-radius: 4px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .bubble-user {
+      background: linear-gradient(165deg, rgba(212,103,42,0.26), rgba(212,103,42,0.09));
+      border: 1px solid rgba(212,103,42,0.55);
+      box-shadow: 0 6px 16px -9px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,220,180,0.08);
+    }
+    .bubble-ai {
+      background: linear-gradient(165deg, var(--bark-raised), #3c2d1b);
+      border: 1px solid var(--seam);
+      box-shadow: 0 1px 0 rgba(243,230,200,0.06) inset, 0 10px 20px -10px rgba(0,0,0,0.6);
+    }
+    .bubble-error {
+      background: linear-gradient(165deg, rgba(196,70,56,0.22), rgba(196,70,56,0.08));
+      border: 1px solid rgba(224,110,95,0.6);
+    }
+
+    .ledger-figure { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+    .seam-divider {
+      background-image: repeating-linear-gradient(90deg, var(--seam) 0 5px, transparent 5px 10px);
+      height: 1px;
+    }
+
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    /* El único momento de animación con intención: el sello al archivar */
+    #stamp-overlay { pointer-events: none; }
+    #stamp-overlay .stamp-ring {
+      opacity: 0; transform: scale(2.2) rotate(-18deg);
+    }
+    #stamp-overlay.firing .stamp-ring {
+      animation: stamp-hit 0.65s cubic-bezier(.2,1.4,.4,1) forwards;
+    }
+    @keyframes stamp-hit {
+      0%   { opacity: 0; transform: scale(2.2) rotate(-18deg); }
+      55%  { opacity: 1; transform: scale(0.92) rotate(-4deg); }
+      70%  { opacity: 1; transform: scale(1.04) rotate(-6deg); }
+      100% { opacity: 0; transform: scale(1.0) rotate(-6deg); }
+    }
+
+    textarea::placeholder { color: var(--manila-dim); }
+
+    /* ===== UI viva: feedback táctil y transiciones (Capa de pulido) ===== */
+    /* Apachurre sutil en todos los botones: se siente que lo presionaste. */
+    button { -webkit-tap-highlight-color: transparent; }
+    button:not(:disabled):active { transform: scale(0.96); transition: transform 0.12s ease; }
+
+    /* Orbe de estatus con vida: trabajando (ámbar pulsando) y error (rojo). */
+    #status-orb { transition: background 0.4s ease, box-shadow 0.4s ease; }
+    #status-orb.orb-working { background: var(--gold); animation: orb-pulse 1.1s ease-in-out infinite; }
+    #status-orb.orb-error { background: #c44638; box-shadow: 0 0 8px rgba(196,70,56,0.6); }
+    @keyframes orb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* Cross-fade entre pestañas del panel lateral (antes: hidden instantáneo). */
+    .drawer-panel:not(.hidden) { animation: panel-in 0.22s ease-out both; }
+    @keyframes panel-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: none; } }
+
+    /* Skeleton shimmer en vez de 'Cargando...' — la espera se siente profesional. */
+    .skel-card { position: relative; overflow: hidden; background: rgba(81,61,38,0.35); border: 1px solid rgba(122,96,56,0.25); border-radius: 8px; }
+    .skel-card::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 20%, rgba(243,230,200,0.09) 50%, transparent 80%);
+      transform: translateX(-100%); animation: skel 1.4s ease-in-out infinite;
+    }
+    @keyframes skel { to { transform: translateX(100%); } }
+
+    /* Odómetro de la cartera: el saldo 'se estampa' cuando cambia. */
+    .eco-bump { animation: eco-bump 0.55s cubic-bezier(.2,1.4,.4,1); }
+    @keyframes eco-bump { 0% { transform: scale(1); } 35% { transform: scale(1.18); color: var(--gold); } 100% { transform: scale(1); } }
+
+    /* Máquina de escribir: la prosa de la IA fluye párrafo por párrafo. */
+    .tw-p { opacity: 0; animation: p-flow 0.42s ease-out both; }
+    @keyframes p-flow { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+    /* Respeto a quien prefiere menos movimiento. */
+    @media (prefers-reduced-motion: reduce) {
+      .tw-p, .drawer-panel:not(.hidden), .turn-new, .eco-bump, .skel-card::after { animation: none !important; }
+      .tw-p { opacity: 1; }
+    }
+
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased overflow-hidden grain">
+  <div class="paper-fiber"></div>
+  <!-- Sprite de iconos Cedar Creek: set sólido estilo sello de tinta -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <defs>
+      <symbol id="i-book" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 2h14a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm2 4.5h10v1.6H7V6.5Zm0 3.4h10v1.6H7V9.9Zm0 3.4h7v1.6H7v-1.6Z"/></symbol>
+      <symbol id="i-cash" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.5 5.5h19A1.5 1.5 0 0 1 23 7v10a1.5 1.5 0 0 1-1.5 1.5h-19A1.5 1.5 0 0 1 1 17V7a1.5 1.5 0 0 1 1.5-1.5Zm12 2.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-11 1v6h1.4V9H3.5Zm17 0v6h1.4V9h-1.4Z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M2 4.4h20v2.6H2V4.4Zm14.9-.4a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8ZM2 10.7h20v2.6H2v-2.6ZM6.6 9.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8ZM2 17h20v2.6H2V17Zm12.9-.4a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></symbol>
+      <symbol id="i-tools" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.2 2.8h5.6a1.2 1.2 0 0 1 1.2 1.2v1.2h3.3A1.7 1.7 0 0 1 21 6.9v4.1H3V6.9a1.7 1.7 0 0 1 1.7-1.7H8V4a1.2 1.2 0 0 1 1.2-1.2ZM10 4.4a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8ZM3 12.6h18v6.6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6.6Zm8.9 1.6a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8Z"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18.9 3.2 12 10.1 5.1 3.2 3 5.3l6.9 6.9L3 19.1l2.1 2.1 6.9-6.9 6.9 6.9 2.1-2.1-6.9-6.9 6.9-6.9-2.1-2.1Z"/></symbol>
+      <symbol id="i-caliper" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.5a10.5 10.5 0 1 0 0 21 10.5 10.5 0 0 0 0-21Zm0 3.2a7.3 7.3 0 1 1 0 14.6 7.3 7.3 0 0 1 0-14.6Zm0 4.8a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></symbol>
+      <symbol id="i-flip" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 2h7.6L20 8.4V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm5 6h2v3h3v2h-3v3h-2v-3H8v-2h3V8Z"/></symbol>
+      <symbol id="i-coins" viewBox="0 0 24 24"><path d="M3.5 15h17a2.25 2.25 0 0 1 0 4.5h-17a2.25 2.25 0 0 1 0-4.5Zm2-5.5h13a2.25 2.25 0 0 1 0 4.5h-13a2.25 2.25 0 0 1 0-4.5Zm2-5.5h9a2.25 2.25 0 0 1 0 4.5h-9a2.25 2.25 0 0 1 0-4.5Z"/></symbol>
+      <symbol id="i-hammer" viewBox="0 0 24 24"><path d="M15.2 2.3 21.7 8.8l-2.3 2.3-1.4-1.4-1.6 1.6-3.7-3.7 1.6-1.6-1.4-1.4 2.3-2.3ZM11.3 8.9l3.8 3.8-8.2 8.2a2.7 2.7 0 0 1-3.8-3.8l8.2-8.2Z"/></symbol>
+      <symbol id="i-compass" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.6 17.4 12 12 22.4 6.6 12 12 1.6Zm0 8.1a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6Z"/></symbol>
+      <symbol id="i-tack" viewBox="0 0 24 24"><path d="M12 2a5.2 5.2 0 0 1 5.2 5.2c0 2.2-1.4 4.1-3.4 4.9V14h-3.6v-1.9c-2-.8-3.4-2.7-3.4-4.9A5.2 5.2 0 0 1 12 2Zm-2 13.5h4l-.7 4.8a1.4 1.4 0 0 1-2.6 0l-.7-4.8Z"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M21.4 2.6 2.7 9.9c-1 .4-1 1.7.1 2.1l6.7 2 2 6.7c.3 1 1.7 1.1 2.1.1l7.3-18.7c.4-.9-.5-1.9-1.5-1.5ZM9.6 13.9l-1.2-1.2 9.4-8.2-8.2 9.4Z"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 2a8.5 8.5 0 1 0 5.5 15l4.3 4.3 2.1-2.1-4.3-4.3A8.5 8.5 0 0 0 10.5 2Zm0 3.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6Z"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M21 3.2H3A1.8 1.8 0 0 0 1.2 5v14A1.8 1.8 0 0 0 3 20.8h18a1.8 1.8 0 0 0 1.8-1.8V5A1.8 1.8 0 0 0 21 3.2Zm-2.6 2.6v12.4H5.6V5.8h12.8Z"/><path d="M6.8 16.2h10.4v-2.4l-3.4-4-3.6 4.1-2-2.3-1.4 1.6v3Z"/><path d="M8.7 8.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><path d="M4 4h5v2H6v12h6v2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M9 2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm2 4.5h4v1.5h-4V6.5Zm0 3h4V11h-4V9.5Z"/></symbol>
+      <symbol id="i-cut" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.8a10.2 10.2 0 1 0 0 20.4 10.2 10.2 0 0 0 0-20.4ZM8.4 6.5 12 10.1l3.6-3.6 1.9 1.9-3.6 3.6 3.6 3.6-1.9 1.9-3.6-3.6-3.6 3.6-1.9-1.9 3.6-3.6-3.6-3.6 1.9-1.9Z"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M10.9 2.3h2.2v8.4l3.1-3.1 1.6 1.6L12 15 6.2 9.2l1.6-1.6 3.1 3.1V2.3Z"/><path d="M3.5 16.7h17a1.6 1.6 0 0 1 1.6 1.6v2.2H1.9v-2.2a1.6 1.6 0 0 1 1.6-1.6Z"/></symbol>
+      <symbol id="i-stamp" viewBox="0 0 24 24"><path d="M12 1.8c2.9 0 5.2 2.2 5.2 5 0 1.7-.9 3.2-2.2 4.1v2.6H9v-2.6a5 5 0 0 1-2.2-4.1c0-2.8 2.3-5 5.2-5Z"/><path d="M4.5 14.9h15a2.5 2.5 0 0 1 2.5 2.5v1.1H2v-1.1a2.5 2.5 0 0 1 2.5-2.5Z"/><path d="M2 19.6h20V21a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 21v-1.4Z"/></symbol>
+      <symbol id="i-pen" viewBox="0 0 24 24"><path d="M15.9 2.7l5.4 5.4L9.6 19.8l-5.4.6a1 1 0 0 1-1.1-1.1l.6-5.4L15.9 2.7Z"/><path d="M20.9 1.3l1.8 1.8a1.3 1.3 0 0 1 0 1.8l-1.2 1.2-3.6-3.6 1.2-1.2a1.3 1.3 0 0 1 1.8 0Z"/></symbol>
+    </defs>
+  </svg>
+
+
+  <!-- Header -->
+  <header class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-b border-[color:var(--seam)] px-4 py-2.5 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <button onclick="toggleDrawer()" title="Bitácora del pueblo" class="p-1.5 -ml-1 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded-md transition shrink-0">
+        <svg class="icon solid"><use href="#i-book"/></svg>
+      </button>
+      <span id="status-orb" class="w-[7px] h-[7px] rounded-full bg-[color:var(--moss)] shrink-0"></span>
+      <div class="flex flex-col leading-none min-w-0">
+        <span class="text-[15px] font-semibold tracking-wide text-[color:var(--rust)] truncate">Cedar Creek</span>
+        <span class="text-[10px] text-[color:var(--manila-dim)] tracking-wide">Distrito forestal · oct. 1985</span>
+      </div>
+      <span id="cache-badge" class="hidden sm:inline-block text-[10px] text-[color:var(--moss)] ml-1 shrink-0">Canon sincronizado</span>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button onclick="toggleEconomyPopover()" id="economy-chip" title="Saldo de Edson" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[color:var(--bark-raised)] border border-[color:var(--seam)] text-[color:var(--manila)] hover:border-[color:var(--rust)]/50 transition">
+        <svg class="icon solid"><use href="#i-cash"/></svg>
+        <span class="ledger-figure text-[13px] leading-none">$—.—</span>
+      </button>
+      <button onclick="toggleConfigModal()" title="Configuración" class="p-2 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] hover:bg-[color:var(--bark-raised)] rounded-md transition">
+        <svg class="icon solid"><use href="#i-sliders"/></svg>
+      </button>
+      <button onclick="toggleMobileMenu()" title="Herramientas" class="p-2 text-[color:var(--manila)] bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/50 rounded-md transition flex items-center gap-1.5">
+        <svg class="icon solid"><use href="#i-tools"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Fondo oscuro del panel lateral -->
+  <div id="drawer-backdrop" onclick="toggleDrawer()" class="hidden fixed inset-0 bg-black/60 z-40"></div>
+
+  <!-- Panel lateral: Bitácora del pueblo -->
+  <aside id="side-drawer" class="fixed top-0 left-0 h-full w-[85%] max-w-xs z-50 bg-[color:var(--bark-deep)] border-r border-[color:var(--seam)] shadow-2xl transition-transform duration-300 -translate-x-full flex flex-col">
+    <div class="px-4 py-3 border-b border-[color:var(--seam)] flex items-center justify-between shrink-0">
+      <span class="text-[13px] font-semibold text-[color:var(--rust)] tracking-wide">Bitácora del pueblo</span>
+      <button onclick="toggleDrawer()" class="p-1 text-[color:var(--manila-dim)]">
+        <svg class="icon solid"><use href="#i-x"/></svg>
+      </button>
+    </div>
+
+    <div class="flex border-b border-[color:var(--seam)] shrink-0">
+      <button onclick="switchDrawerTab('vinculos')" data-tab="vinculos" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--rust)] border-b-2 border-[color:var(--rust)]">Vínculos</button>
+      <button onclick="switchDrawerTab('stats')" data-tab="stats" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Estadísticas</button>
+      <button onclick="switchDrawerTab('datos')" data-tab="datos" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Datos</button>
+      <button onclick="switchDrawerTab('buscador')" data-tab="buscador" class="drawer-tab flex-1 text-[11px] py-2 text-[color:var(--manila-dim)] border-b-2 border-transparent">Buscador</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3.5">
+      <!-- Vínculos -->
+      <div id="tab-vinculos" class="drawer-panel space-y-2.5"></div>
+
+      <!-- Estadísticas -->
+      <div id="tab-stats" class="drawer-panel hidden space-y-2.5"></div>
+      <!-- Datos -->
+      <div id="tab-datos" class="drawer-panel hidden space-y-2.5"></div>
+
+      <!-- Buscador -->
+      <div id="tab-buscador" class="drawer-panel hidden space-y-2.5">
+        <div class="flex gap-1.5">
+          <input id="search-input" type="text" placeholder="¿Qué dije de...?" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] rounded-md px-2 py-1.5 text-[13px] text-[color:var(--manila)]">
+          <button onclick="runCanonSearch()" class="px-2.5 py-1.5 rounded-md bg-[color:var(--rust)] text-[color:var(--bark)] text-[11px] font-semibold shrink-0 flex items-center gap-1"><svg class="icon solid" style="width:12px;height:12px"><use href="#i-search"/></svg>Buscar</button>
+        </div>
+        <div id="search-results" class="space-y-2 pt-1"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Popover de saldo -->
+  <div id="economy-popover" class="hidden absolute top-12 right-4 z-40 bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-lg p-3.5 shadow-2xl w-56">
+    <div class="text-[11px] text-[color:var(--manila-dim)] mb-2">Cartera de Edson</div>
+    <div class="flex justify-between text-[13px] text-[color:var(--manila)] mb-1 ledger-figure">
+      <span class="font-normal text-[color:var(--manila-dim)]">En mano</span><span id="eco-mano">$0.00</span>
+    </div>
+    <div class="flex justify-between text-[13px] text-[color:var(--manila)] mb-2 ledger-figure">
+      <span class="font-normal text-[color:var(--manila-dim)]">En la maleta</span><span id="eco-maleta">$0.00</span>
+    </div>
+    <div class="seam-divider mb-2"></div>
+    <div class="flex justify-between text-[14px] font-semibold text-[color:var(--rust)] ledger-figure">
+      <span>Total</span><span id="eco-total">$0.00</span>
+    </div>
+  </div>
+
+  <!-- Menú de herramientas -->
+  <div id="tools-menu" class="hidden absolute top-12 right-4 z-40 bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-lg p-3 shadow-2xl flex flex-col gap-2.5 w-64">
+    <div>
+      <label class="block text-[11px] text-[color:var(--manila-dim)] mb-1">Modelo</label>
+      <select id="model-select" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] text-[color:var(--manila)] text-[13px] rounded-md px-2.5 py-2 focus:border-[color:var(--rust)] focus:outline-none">
+        <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
+        <option value="gemini-4-hydrogen">Gemini 4 Hydrogen</option>
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-[11px] text-[color:var(--manila-dim)] mb-1">Velocidad de respuesta</label>
+      <select id="thinking-select" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] text-[color:var(--manila)] text-[13px] rounded-md px-2.5 py-2 focus:border-[color:var(--rust)] focus:outline-none">
+        <option value="low" selected>Rápida (pensamiento bajo)</option>
+        <option value="medium">Equilibrada</option>
+        <option value="high">Cuidadosa (más lenta)</option>
+      </select>
+    </div>
+    <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="calibrateAll(); toggleMobileMenu();" class="flex-1 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[13px] py-2 rounded-md font-medium transition border border-[color:var(--moss)]/35 flex items-center justify-center gap-1.5">
+        <svg class="icon solid" style="width:13px;height:13px"><use href="#i-caliper"/></svg>
+        Calibrar
+      </button>
+      <button onclick="clearSessionHistory(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon solid" style="width:13px;height:13px"><use href="#i-flip"/></svg>
+        Nueva sesión
+      </button>
+    </div>
+    <div class="flex gap-2 pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="adjustEconomy(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon solid" style="width:13px;height:13px"><use href="#i-coins"/></svg>
+        Ajustar saldo
+      </button>
+      <button onclick="rebuildIndex(); toggleMobileMenu();" class="flex-1 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] hover:border-[color:var(--rust)]/40 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] text-[13px] py-2 rounded-md transition flex items-center justify-center gap-1.5">
+        <svg class="icon solid" style="width:13px;height:13px"><use href="#i-hammer"/></svg>
+        Reconstruir índice
+      </button>
+    </div>
+    <div class="pt-1 border-t border-[color:var(--seam)]">
+      <button onclick="recalibrate(); toggleMobileMenu();" class="w-full bg-[color:var(--rust)]/15 hover:bg-[color:var(--rust)]/25 text-[color:var(--rust)] border border-[color:var(--rust)]/40 text-[13px] py-2 rounded-md font-medium transition flex items-center justify-center gap-1.5">
+        <svg class="icon solid" style="width:13px;height:13px"><use href="#i-compass"/></svg>
+        Recalibrar (se desvarió)
+      </button>
+    </div>
+  </div>
+
+  <!-- Feed principal -->
+  <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+    <div id="chat-stream" class="flex-1 overflow-y-auto px-4 py-5 space-y-5 max-w-2xl mx-auto w-full">
+      <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl px-5 py-6 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+        <div class="prose-chapter-rule" style="margin-bottom: 0.7rem;"></div>
+        <span class="text-[color:var(--rust)] font-semibold block mb-1 text-[15px] tracking-wide">Cuaderno de campo abierto</span>
+        <span class="block italic text-[12px] text-[color:var(--manila-dim)] mb-3">Cedar Creek, distrito forestal — octubre de 1985</span>
+        <span class="block">Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.</span>
+        <div class="prose-chapter-rule" style="margin-top: 0.9rem;"></div>
+      </div>
+    </div>
+
+    <!-- Barra de escritura -->
+    <footer class="bg-[color:var(--bark-deep)]/95 backdrop-blur border-t border-[color:var(--seam)] px-3 py-2.5 shrink-0" style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));">
+      <div class="max-w-2xl mx-auto">
+        <div id="pending-attach" class="hidden mb-1.5"></div>
+        <div class="flex gap-2 items-end">
+          <input type="file" id="attach-input" class="hidden" accept="image/*,.txt,.md" onchange="handleAttachChange(this)">
+          <button onclick="triggerAttach()" title="Adjuntar imagen o archivo" class="p-2.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] border border-[color:var(--seam)] rounded-lg h-[48px] w-[44px] flex items-center justify-center shrink-0 transition">
+            <svg class="icon solid"><use href="#i-tack"/></svg>
+          </button>
+          <textarea id="prompt-box" rows="2" placeholder="Escribe tu acción o diálogo..." class="flex-1 bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2.5 text-[14px] text-[color:var(--manila)] focus:outline-none focus:border-[color:var(--rust)] resize-none prose-font leading-relaxed overflow-y-auto" style="max-height: 33vh;" oninput="autoGrow(this)"></textarea>
+          <button onclick="sendTurn()" id="btn-send" class="varnish stacked-shadow bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold px-4 rounded-lg text-[13px] transition h-[48px] flex items-center justify-center shrink-0 gap-1.5">
+            <span id="send-label" class="flex items-center gap-1.5">
+              <svg class="icon solid" style="fill:#1a1510"><use href="#i-send"/></svg>
+              Enviar
+            </span>
+            <svg id="send-spinner" class="hidden icon" viewBox="0 0 24 24" style="stroke:#1a1510;animation:tw-blink .6s steps(1) infinite"><circle cx="12" cy="12" r="7"/></svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Sello animado (único momento de motion con intención) -->
+  <div id="stamp-overlay" class="fixed inset-0 z-[60] flex items-center justify-center">
+    <div class="stamp-ring w-40 h-40 rounded-full border-[3px] flex items-center justify-center" style="border-color: var(--rust); color: var(--rust);">
+      <span class="text-[15px] font-bold tracking-widest">ARCHIVADO</span>
+    </div>
+  </div>
+
+  <!-- Notificaciones -->
+  <div id="toast" class="fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[color:var(--moss)]/50 text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 text-center">
+    <span id="toast-text">Notificación</span>
+  </div>
+
+  <!-- Modal configuración -->
+  <div id="modal-config" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-[color:var(--bark-deep)] border border-[color:var(--seam)] rounded-xl p-5 max-w-sm w-full space-y-3 max-h-[85vh] overflow-y-auto">
+      <h3 class="text-[15px] font-semibold text-[color:var(--rust)]">Configuración</h3>
+
+      <div>
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Clave de API de Google AI Studio</label>
+        <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] focus:border-[color:var(--rust)] focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">GitHub Token (PAT)</label>
+        <input type="password" id="input-gh-token" placeholder="ghp_..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] focus:border-[color:var(--rust)] focus:outline-none">
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Usuario</label>
+          <input type="text" id="input-gh-owner" value="XRhaegal" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)]">
+        </div>
+        <div>
+          <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Repo</label>
+          <input type="text" id="input-gh-repo" value="novel-engine" class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)]">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[12px] text-[color:var(--manila-dim)] mb-1">Reglas adicionales (tuyas, aparte del Main)</label>
+        <textarea id="input-custom-rules" rows="4" placeholder="Ej: nunca describas la ropa de Edson en las mañanas. Siempre que Grace hable con él, debe tutearlo..." class="w-full bg-[color:var(--bark)] border border-[color:var(--seam)] rounded-lg p-2 text-[13px] text-[color:var(--manila)] prose-font resize-y focus:border-[color:var(--rust)] focus:outline-none"></textarea>
+        <span class="block text-[10.5px] text-[color:var(--manila-dim)] mt-1 italic">Se aplican en cada generación junto con el Main — si chocan con él, estas ganan.</span>
+      </div>
+
+      <label class="flex items-center justify-between gap-2 cursor-pointer border border-[color:var(--seam)] rounded-lg px-3 py-2">
+        <span class="text-[12.5px] text-[color:var(--manila)]">Modo adulto (sin filtro de contenido)</span>
+        <input type="checkbox" id="input-mature-mode" class="w-4 h-4 accent-[color:var(--rust)]">
+      </label>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="toggleConfigModal()" class="px-3 py-1.5 text-[13px] text-[color:var(--manila-dim)] hover:text-[color:var(--manila)]">Cerrar</button>
+        <button onclick="saveSettings()" class="bg-[color:var(--rust)] hover:bg-[color:var(--rust-deep)] text-[#1a1510] font-semibold text-[13px] px-3.5 py-1.5 rounded-lg">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let savedKey = localStorage.getItem('GEMINI_USER_KEY') || '';
+    let ghToken = localStorage.getItem('GH_TOKEN') || '';
+    let ghOwner = localStorage.getItem('GH_OWNER') || 'XRhaegal';
+    let ghRepo = localStorage.getItem('GH_REPO') || 'novel-engine';
+    let customRules = localStorage.getItem('CUSTOM_RULES') || '';
+    let matureMode = localStorage.getItem('MATURE_MODE') === 'true';
+
+    document.getElementById('input-api-key').value = savedKey;
+    document.getElementById('input-gh-token').value = ghToken;
+    document.getElementById('input-gh-owner').value = ghOwner;
+    document.getElementById('input-gh-repo').value = ghRepo;
+    document.getElementById('input-custom-rules').value = customRules;
+    document.getElementById('input-mature-mode').checked = matureMode;
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('THINKING_LEVEL');
+      if (saved) document.getElementById('thinking-select').value = saved;
+    });
+
+    let sessionHistory = [];
+
+    /* Vibración háptica: en Android suena el motorcito real del teléfono;
+       en iOS/web no existe navigator.vibrate y simplemente no hace nada. */
+    function haptic(pattern) {
+      try {
+        if (navigator.vibrate) navigator.vibrate(pattern || 10);
+      } catch (e) {}
+    }
+    /* Un tick suave en CADA botón de la app, sin tocarlos uno por uno. */
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('button')) haptic(10);
+    }, { passive: true });
+
+    /* Orbe de estatus: verde = tranqui, ámbar pulsando = redactando, rojo = error. */
+    function setStatusOrb(mode) {
+      const orb = document.getElementById('status-orb');
+      if (!orb) return;
+      orb.classList.remove('orb-working', 'orb-error');
+      if (mode === 'working') {
+        orb.classList.add('orb-working');
+      } else if (mode === 'error') {
+        orb.classList.add('orb-error');
+        setTimeout(() => orb.classList.remove('orb-error'), 4000);
+      }
+    }
+
+    /* Tarjetas de skeleton para las pestañas mientras cargan datos. */
+    function skeletonCards(n, h) {
+      n = n || 3; h = h || 'h-16';
+      var out = '';
+      for (var i = 0; i < n; i++) out += '<div class="skel-card ' + h + '"></div>';
+      return '<div class="space-y-2.5">' + out + '</div>';
+    }
+
+
+    async function loadRemoteSession() {
+      try {
+        const res = await fetch('/api/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.history && data.history.length > 0) {
+            sessionHistory = data.history;
+            renderAllHistory();
+            return;
+          }
+        }
+      } catch (e) {}
+
+      const local = localStorage.getItem('CC_SESSION_HISTORY');
+      if (local) {
+        try {
+          sessionHistory = JSON.parse(local);
+          renderAllHistory();
+        } catch(e) {}
+      }
+    }
+
+    function renderAllHistory() {
+      const stream = document.getElementById('chat-stream');
+      stream.innerHTML = '';
+      if (sessionHistory.length === 0) {
+        stream.innerHTML = `
+          <div id="welcome-card" class="dog-ear stacked-shadow border border-[color:var(--seam)] bg-[color:var(--bark-raised)]/60 rounded-xl px-5 py-6 text-[13px] text-[color:var(--manila-dim)] leading-relaxed text-center">
+            <div class="prose-chapter-rule" style="margin-bottom: 0.7rem;"></div>
+            <span class="text-[color:var(--rust)] font-semibold block mb-1 text-[15px] tracking-wide">Cuaderno de campo abierto</span>
+            <span class="block italic text-[12px] text-[color:var(--manila-dim)] mb-3">Cedar Creek, distrito forestal — octubre de 1985</span>
+            <span class="block">Escribe con calma: <span class="text-[color:var(--manila)] text-[12px] bg-[color:var(--bark)] px-1.5 py-0.5 rounded">Enter</span> crea un párrafo nuevo, el botón envía el turno.</span>
+            <div class="prose-chapter-rule" style="margin-top: 0.9rem;"></div>
+          </div>
+        `;
+        return;
+      }
+      sessionHistory.forEach((item, idx) => renderMessageDom(item.sender, item.text, item.role, idx, false, item.warnings || []));
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    async function syncSessionToServer() {
+      localStorage.setItem('CC_SESSION_HISTORY', JSON.stringify(sessionHistory));
+      try {
+        await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history: sessionHistory })
+        });
+      } catch (e) {}
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadRemoteSession();
+      refreshEconomyChip();
+
+      const pBox = document.getElementById('prompt-box');
+      pBox.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          sendTurn();
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        const pop = document.getElementById('economy-popover');
+        const chip = document.getElementById('economy-chip');
+        if (!pop.classList.contains('hidden') && !pop.contains(e.target) && !chip.contains(e.target)) {
+          pop.classList.add('hidden');
+        }
+      });
+    });
+
+    function toggleMobileMenu() {
+      document.getElementById('tools-menu').classList.toggle('hidden');
+    }
+
+    function toggleConfigModal() {
+      document.getElementById('modal-config').classList.toggle('hidden');
+    }
+
+    function toggleEconomyPopover() {
+      document.getElementById('economy-popover').classList.toggle('hidden');
+    }
+
+    async function refreshEconomyChip(data) {
+      let state = data;
+      if (!state) {
+        try {
+          const res = await fetch('/api/economy');
+          if (res.ok) {
+            const payload = await res.json();
+            state = payload.state;
+          }
+        } catch (e) { return; }
+      }
+      if (!state) return;
+      const total = (state.mano + state.maleta).toFixed(2);
+      const chip = document.querySelector('#economy-chip .ledger-figure');
+      const ecoTotal = document.getElementById('eco-total');
+      const changed = chip.innerText !== `${total}`;
+      chip.innerText = `${total}`;
+      document.getElementById('eco-mano').innerText = `${state.mano.toFixed(2)}`;
+      document.getElementById('eco-maleta').innerText = `${state.maleta.toFixed(2)}`;
+      ecoTotal.innerText = `${total}`;
+      if (changed) {
+        // Odómetro: el saldo nuevo 'se estampa' en vez de aparecer sin aviso.
+        haptic(18);
+        [chip, ecoTotal].forEach(el => {
+          el.classList.remove('eco-bump');
+          void el.offsetWidth; // reinicia la animación
+          el.classList.add('eco-bump');
+        });
+      }
+    }
+
+    async function clearSessionHistory() {
+      if (!confirm("¿Vaciar la pantalla para iniciar un nuevo capítulo?")) return;
+      sessionHistory = [];
+      localStorage.removeItem('CC_SESSION_HISTORY');
+      try { await fetch('/api/session', { method: 'DELETE' }); } catch(e) {}
+      renderAllHistory();
+      showToast("Sesión vaciada.");
+    }
+
+    function showToast(text, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toast-text');
+      toastText.innerText = text;
+      toast.className = isError
+        ? "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[#a03228] text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-100 z-50 text-center"
+        : "fixed bottom-20 left-4 right-4 max-w-xs mx-auto bg-[color:var(--bark-deep)] border border-[color:var(--moss)] text-[color:var(--manila)] text-[13px] px-3.5 py-2.5 rounded-lg shadow-2xl transition-all duration-300 opacity-100 z-50 text-center";
+
+      setTimeout(() => {
+        toast.className = toast.className.replace('opacity-100', 'opacity-0 pointer-events-none');
+      }, 3500);
+    }
+
+    function saveSettings() {
+      savedKey = document.getElementById('input-api-key').value.trim();
+      ghToken = document.getElementById('input-gh-token').value.trim();
+      ghOwner = document.getElementById('input-gh-owner').value.trim();
+      ghRepo = document.getElementById('input-gh-repo').value.trim();
+      customRules = document.getElementById('input-custom-rules').value.trim();
+      matureMode = document.getElementById('input-mature-mode').checked;
+      localStorage.setItem('MATURE_MODE', matureMode);
+
+      localStorage.setItem('GEMINI_USER_KEY', savedKey);
+      localStorage.setItem('GH_TOKEN', ghToken);
+      localStorage.setItem('GH_OWNER', ghOwner);
+      localStorage.setItem('GH_REPO', ghRepo);
+      localStorage.setItem('CUSTOM_RULES', customRules);
+
+      toggleConfigModal();
+      showToast("Configuración guardada.");
+    }
+
+    function getSelectedModel() {
+      return document.getElementById('model-select').value;
+    }
+
+    function getThinkingLevel() {
+      const select = document.getElementById('thinking-select');
+      localStorage.setItem('THINKING_LEVEL', select.value);
+      return select.value;
+    }
+
+    async function adjustEconomy() {
+      const mano = prompt("Saldo real EN MANO (solo el número, ej: 141.62):");
+      if (mano === null) return;
+      const maleta = prompt("Saldo real EN MALETA (solo el número, ej: 280.00):");
+      if (maleta === null) return;
+
+      try {
+        const res = await fetch(`/api/economy/adjust?mano=${encodeURIComponent(mano)}&maleta=${encodeURIComponent(maleta)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          refreshEconomyChip(data.state);
+          showToast("Saldo ajustado correctamente.");
+        } else {
+          showToast("Error: " + (data.detail || "no se pudo ajustar"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
+    async function rebuildIndex() {
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+      if (!ghToken) { toggleConfigModal(); return showToast("Ingresa tu GitHub Token primero.", true); }
+      if (!confirm("Esto revisa TODOS los capítulos en canon/ y puede tardar uno o dos minutos. ¿Continuar?")) return;
+
+      showToast("Reconstruyendo índice, espera...");
+      try {
+        const res = await fetch('/api/rebuild-index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ github_token: ghToken, repo_owner: ghOwner, repo_name: ghRepo, api_key: savedKey })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message);
+        } else {
+          showToast("Error: " + (data.detail || "falló la reconstrucción"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
+    function toggleDrawer() {
+      const drawer = document.getElementById('side-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const isOpen = !drawer.classList.contains('-translate-x-full');
+      if (isOpen) {
+        drawer.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      } else {
+        drawer.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+        switchDrawerTab('vinculos');
+      }
+    }
+
+    function switchDrawerTab(tab) {
+      document.querySelectorAll('.drawer-tab').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.classList.toggle('text-[color:var(--rust)]', active);
+        btn.classList.toggle('border-[color:var(--rust)]', active);
+        btn.classList.toggle('text-[color:var(--manila-dim)]', !active);
+        btn.classList.toggle('border-transparent', !active);
+      });
+      document.querySelectorAll('.drawer-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+
+      if (tab === 'vinculos') loadLinksTab();
+      if (tab === 'stats') loadStatsTab();
+      if (tab === 'datos') loadDatosTab();
+    }
+
+    async function loadLinksTab() {
+      const box = document.getElementById('tab-vinculos');
+      box.innerHTML = skeletonCards(4, 'h-[74px]');
+      try {
+        const res = await fetch('/api/links');
+        const data = await res.json();
+        const personajes = data.personajes || {};
+        const names = Object.keys(personajes);
+        if (names.length === 0) {
+          box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Aún no hay vínculos registrados. Se llenan solos al cerrar capítulos.</div>`;
+          return;
+        }
+        box.innerHTML = names.map(name => {
+          const p = personajes[name];
+          return `
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+              <div class="flex justify-between items-baseline">
+                <span class="text-[13px] font-semibold text-[color:var(--manila)]">${name}</span>
+                <span class="text-[10px] text-[color:var(--rust)]">${p.nivel || '—'}</span>
+              </div>
+              <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-0.5 leading-snug">${p.ultimo_hito || ''}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]/70 mt-1">Cap. ${p.capitulo ?? '?'}</div>
+            </div>`;
+        }).join('');
+      } catch (e) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar.</div>`;
+      }
+    }
+
+    async function loadStatsTab() {
+      const box = document.getElementById('tab-stats');
+      box.innerHTML = skeletonCards(3, 'h-20');
+      try {
+        const res = await fetch('/api/story-state');
+        const data = await res.json();
+        const s = data.state || {};
+        const e = s.edson || {};
+        if (!s.capitulo && !s.ultimo_cs) {
+          box.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Aún no hay estado vivo. Da clic en "Calibrar" para calcularlo desde el último Continuity State.</div>`;
+          return;
+        }
+        const eco = s.economia || {};
+        const saldo = (eco.saldo_final != null) ? '$' + eco.saldo_final.toFixed(2) : '—';
+        const lista = arr => (Array.isArray(arr) ? arr : (arr ? [arr] : [])).map(x => `<li>${x}</li>`).join('');
+        box.innerHTML = `
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[13px] font-semibold text-[color:var(--rust)] mb-1">Edson — Cap. ${s.capitulo ?? '?'}</div>
+            <div class="text-[11px] text-[color:var(--manila-dim)]">${s.fecha || ''}${s.hora ? ' · ' + s.hora : ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila)] mt-1.5 leading-snug">${e['ubicación'] || ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-1 leading-snug">${e['estado físico'] || ''}</div>
+            <div class="text-[11.5px] text-[color:var(--manila-dim)] mt-1 leading-snug">${e['estado emocional'] || ''}</div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Cartera</div>
+            <div class="text-[12px] text-[color:var(--manila-dim)]">Saldo al cierre: <span class="ledger-figure text-[color:var(--rust)]">${saldo}</span></div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Objetivos</div>
+            <ul class="text-[11.5px] text-[color:var(--manila-dim)] list-disc pl-4 space-y-0.5">${lista(e['objetivos actuales'])}</ul>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="text-[12px] font-semibold text-[color:var(--manila)] mb-1">Hilos abiertos</div>
+            <ul class="text-[11.5px] text-[color:var(--manila-dim)] list-disc pl-4 space-y-0.5">${lista(s.hilos_abiertos)}</ul>
+          </div>
+          <div class="text-[10px] text-[color:var(--manila-dim)]/70">Fuente: ${data.fuente || '—'} · actualizado ${s.actualizado || '—'}</div>
+        `;
+      } catch (err) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar el estado.</div>`;
+      }
+    }
+
+    async function loadDatosTab() {
+      const box = document.getElementById('tab-datos');
+      box.innerHTML = skeletonCards(3, 'h-20');
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        const warningsHtml = (data.warnings || []).map(w =>
+          `<div class="text-[11.5px] text-[#e0a89f] border-l-2 border-[#e0a89f]/50 pl-2 py-0.5">${w}</div>`
+        ).join('');
+        box.innerHTML = `
+          <div class="grid grid-cols-2 gap-2">
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.total_chapters}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Capítulos</div>
+            </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.total_cs ?? 0}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Continuity States</div>
+            </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.indexed_fragments}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Fragmentos</div>
+            </div>
+            <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-center">
+              <div class="text-[20px] font-semibold text-[color:var(--rust)] ledger-figure">${data.capitulos_reales ?? data.total_chapters}</div>
+              <div class="text-[10px] text-[color:var(--manila-dim)]">Canon real</div>
+            </div>
+          </div>
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5 text-[12px] text-[color:var(--manila-dim)]">
+            Main: ~${(data.main_tokens_estimate || 0).toLocaleString()} tokens estimados<br>
+            Último capítulo: ${data.latest_chapter || '—'}<br>
+            Último CS: ${data.latest_cs || '—'}
+          </div>
+          ${warningsHtml}
+        `;
+      } catch (err) {
+        box.innerHTML = `<div class="text-[12px] text-[#e0a89f]">No se pudo cargar.</div>`;
+      }
+    }
+
+    async function calibrateAll() {
+      showToast("Calibrando canon y estado vivo...");
+      const payload = {};
+      if (ghToken) {
+        payload.github_token = ghToken;
+        payload.repo_owner = ghOwner;
+        payload.repo_name = ghRepo;
+      }
+      try {
+        const res = await fetch('/api/calibrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || "Calibración completa.");
+          const detalles = (data.detalles || []).join('\n• ');
+          if (detalles) appendMessage("Calibración", '• ' + detalles, "assistant");
+          refreshEconomyChip(null);
+          loadLinksTab();
+          loadStatsTab();
+          const badge = document.getElementById('cache-badge');
+          if (badge) badge.classList.remove('hidden');
+        } else {
+          showToast("Error: " + (data.detail || "falló la calibración"), true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
+    async function runCanonSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+
+      const results = document.getElementById('search-results');
+      results.innerHTML = skeletonCards(3, 'h-16');
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&api_key=${encodeURIComponent(savedKey)}`);
+        const data = await res.json();
+        if (!data.results || data.results.length === 0) {
+          results.innerHTML = `<div class="text-[12px] text-[color:var(--manila-dim)] italic">Sin resultados.</div>`;
+          return;
+        }
+        results.innerHTML = data.results.map(r => `
+          <div class="border border-[color:var(--seam)] rounded-md p-2.5">
+            <div class="flex justify-between text-[10px] text-[color:var(--manila-dim)] mb-1">
+              <span>${r.file}</span><span>${r.score}</span>
+            </div>
+            <div class="text-[12px] text-[color:var(--manila)] leading-snug">${r.text.slice(0, 220)}${r.text.length > 220 ? '…' : ''}</div>
+          </div>`).join('');
+      } catch (e) {
+        results.innerHTML = `<div class="text-[12px] text-[#e0a89f]">Error de búsqueda.</div>`;
+      }
+    }
+
+    async function recalibrate() {
+      if (!savedKey) { toggleConfigModal(); return showToast("Ingresa tu API Key primero.", true); }
+      const prompt = (
+        "[RECALIBRACIÓN — no es un turno de historia, es una verificación de contexto]\n" +
+        "Antes de seguir narrando, revisa con cuidado el Main, los documentos de apoyo " +
+        "(Resúmenes, Ficha de Voz, Biblia de Continuidad) y los capítulos recientes que tienes " +
+        "disponibles. Después, respóndeme ÚNICAMENTE con una lista breve confirmando: " +
+        "(1) fecha y hora exacta de la escena en curso, (2) dónde está Edson y quién más " +
+        "hay en la escena, (3) los últimos 2-3 hitos relevantes que no debes olvidar, y " +
+        "(4) cualquier regla del Main que sientas que se te había pasado. No avances la " +
+        "historia en esta respuesta, solo confirma que ya te ubicaste."
+      );
+      appendMessage("Recalibración", prompt, "user");
+      await submitUserMessage(prompt);
+    }
+
+    async function syncCache() {
+      if (!savedKey) {
+        toggleConfigModal();
+        return showToast("Ingresa tu API Key de Gemini primero.", true);
+      }
+
+      showToast("Verificando canon...");
+      try {
+        const res = await fetch('/api/sync-cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: "sync", api_key: savedKey, model: getSelectedModel() })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message);
+        } else {
+          showToast("Error: " + data.detail, true);
+        }
+      } catch (err) {
+        showToast("Error de conexión: " + err.message, true);
+      }
+    }
+
+    function showThinkingIndicator() {
+      const container = document.getElementById('chat-stream');
+      const bubble = document.createElement('div');
+      bubble.id = 'thinking-bubble';
+      bubble.className = "bubble-ai rounded-xl p-3.5 flex items-center gap-2";
+      bubble.innerHTML = `
+        <span class="text-[12px] font-semibold text-[color:var(--rust)]">Cedar Creek</span>
+        <span class="text-[13px] text-[color:var(--manila-dim)] prose-font italic">redactando<span class="typewriter-cursor"></span></span>
+      `;
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeThinkingIndicator() {
+      const bubble = document.getElementById('thinking-bubble');
+      if (bubble) bubble.remove();
+    }
+
+    // Imagen pendiente de enviar en el próximo turno (si el autor adjuntó una).
+    let pendingImage = null; // { base64, mime, name }
+
+    async function sendTurn() {
+      const box = document.getElementById('prompt-box');
+      const text = box.value.trim();
+      if (!text) return;
+      if (!savedKey) {
+        toggleConfigModal();
+        return showToast("Ingresa tu API Key antes de enviar.", true);
+      }
+
+      appendMessage("Tú", text, "user");
+      box.value = "";
+      await submitUserMessage(text);
+    }
+
+    /** Lógica real de mandar un mensaje al backend y renderizar la respuesta.
+     * La usan tanto el botón de Enviar normal como el flujo de "editar y regenerar". */
+    async function submitUserMessage(text) {
+      const btn = document.getElementById('btn-send');
+      const label = document.getElementById('send-label');
+      const spinner = document.getElementById('send-spinner');
+      btn.disabled = true;
+      label.classList.add('hidden');
+      spinner.classList.remove('hidden');
+
+      showThinkingIndicator();
+      setStatusOrb('working');
+
+      const payload = { message: text, api_key: savedKey, model: getSelectedModel(), thinking_level: getThinkingLevel() };
+      if (customRules) payload.custom_rules = customRules;
+      if (matureMode) payload.mature_mode = true;
+      if (pendingImage) {
+        payload.image_base64 = pendingImage.base64;
+        payload.image_mime = pendingImage.mime;
+      }
+      clearPendingImage();
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        removeThinkingIndicator();
+
+        if (res.ok) {
+          setStatusOrb('ok');
+          appendMessage("Cedar Creek", data.response, "assistant", data.lint_warnings || []);
+          if (data.economy) refreshEconomyChip(data.economy);
+          if (data.economy_movements && data.economy_movements.length > 0) {
+            showToast("Caja: " + data.economy_movements.join(" · "));
+          }
+        } else {
+          if (res.status === 429) {
+            showToast("Se te acabó la cuota del modelo — cámbialo en Herramientas ▸ Modelo y reenvía.", true);
+          }
+          setStatusOrb('error');
+          appendMessage("Error", data.detail || "Fallo en el servidor.", "error");
+        }
+      } catch (err) {
+        removeThinkingIndicator();
+        setStatusOrb('error');
+        appendMessage("Error", "Fallo de conexión: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        label.classList.remove('hidden');
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // --- Adjuntar imágenes o archivos de texto ---
+    function triggerAttach() { document.getElementById('attach-input').click(); }
+
+    function handleAttachChange(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingImage = { base64: reader.result.split(',')[1], mime: file.type, name: file.name };
+          renderPendingImageChip();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // Archivo de texto: se agrega como bloque citado directo al cuadro de escritura.
+        const reader = new FileReader();
+        reader.onload = () => {
+          const box = document.getElementById('prompt-box');
+          const block = `\n\n[Archivo adjunto: ${file.name}]\n${reader.result}\n[Fin de ${file.name}]\n`;
+          box.value = (box.value + block).trim();
+          showToast(`"${file.name}" agregado al mensaje.`);
+        };
+        reader.readAsText(file);
+      }
+      input.value = ""; // permite adjuntar el mismo archivo dos veces seguidas si hace falta
+    }
+
+    function renderPendingImageChip() {
+      const holder = document.getElementById('pending-attach');
+      if (!pendingImage) { holder.innerHTML = ''; holder.classList.add('hidden'); return; }
+      holder.classList.remove('hidden');
+      holder.innerHTML = `
+        <div class="flex items-center gap-1.5 bg-[color:var(--bark-raised)] border border-[color:var(--seam)] rounded-md px-2 py-1 text-[11px] text-[color:var(--manila-dim)] w-fit">
+          <svg class="icon solid" style="width:12px;height:12px"><use href="#i-image"/></svg>
+          <span>${pendingImage.name}</span>
+          <button onclick="clearPendingImage()" class="text-[color:var(--rust)]">×</button>
+        </div>`;
+    }
+
+    function clearPendingImage() {
+      pendingImage = null;
+      renderPendingImageChip();
+    }
+
+    function appendMessage(sender, text, role, warnings = []) {
+      sessionHistory.push({ sender, text, role, time: Date.now(), warnings });
+      syncSessionToServer();
+      const idx = sessionHistory.length - 1;
+      renderMessageDom(sender, text, role, idx, true, warnings);
+    }
+
+    function copyMessage(idx) {
+      if (sessionHistory[idx]) {
+        navigator.clipboard.writeText(sessionHistory[idx].text).then(() => {
+          showToast("Mensaje copiado.");
+        }).catch(() => {
+          showToast("No se pudo copiar.", true);
+        });
+      }
+    }
+
+    function deleteMessage(idx) {
+      if (!confirm("¿Eliminar este mensaje del historial?")) return;
+      sessionHistory.splice(idx, 1);
+      syncSessionToServer();
+      renderAllHistory();
+      showToast("Mensaje eliminado.");
+    }
+
+    const ICON_COPY = '<svg class="icon solid" style="width:13px;height:13px"><use href="#i-copy"/></svg>';
+    const ICON_CUT  = '<svg class="icon solid" style="width:13px;height:13px"><use href="#i-cut"/></svg>';
+    const ICON_DOWNLOAD = '<svg class="icon solid" style="width:13px;height:13px"><use href="#i-download"/></svg>';
+    const ICON_STAMP = '<svg class="icon solid" style="width:13px;height:13px"><use href="#i-stamp"/></svg>';
+    const ICON_EDIT = '<svg class="icon solid" style="width:13px;height:13px"><use href="#i-pen"/></svg>';
+
+    /** Crece cualquier textarea/campo editable según lo que escribas,
+     * topado a 1/3 de la altura de pantalla (después, scroll interno). */
+    function autoGrow(el) {
+      const maxH = window.innerHeight / 3;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, maxH) + 'px';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /** Convierte la prosa cruda en párrafos con tratamiento propio:
+     * encabezados de capítulo, cortes de escena ( * * * ) y líneas de
+     * diálogo (que arrancan con raya — ) diferenciadas de la narración. */
+    function formatProse(rawText) {
+      const paragraphs = rawText.split(/\n\s*\n/);
+      return paragraphs.map(p => {
+        const trimmed = p.trim();
+        if (!trimmed) return '';
+
+        if (/^cap[ií]tulo\s+\d+/i.test(trimmed)) {
+          const lines = trimmed.split('\n').map(l => escapeHtml(l.trim()));
+          return `<div class="prose-chapter-header">
+            <div class="prose-chapter-rule"></div>
+            <div class="prose-chapter-title">${lines[0]}</div>
+            ${lines[1] ? `<div class="prose-chapter-sub">${lines.slice(1).join(' ')}</div>` : ''}
+            <div class="prose-chapter-rule"></div>
+          </div>`;
+        }
+
+        if (/^\*\s*\*\s*\*$/.test(trimmed)) {
+          return `<div class="prose-scene-break"><span></span><span></span><span></span></div>`;
+        }
+
+        const escaped = escapeHtml(trimmed).replace(/\n/g, '<br>');
+        const isDialogue = /^—/.test(trimmed);
+        return `<p class="${isDialogue ? 'prose-dialogue' : 'prose-narration'}">${escaped}</p>`;
+      }).join('');
+    }
+
+    function renderMessageDom(sender, text, role, idx, scroll = true, warnings = []) {
+      const welcome = document.getElementById('welcome-card');
+      if (welcome) welcome.classList.add('hidden');
+
+      const container = document.getElementById('chat-stream');
+      const wrapper = document.createElement('div');
+
+      const enterClass = scroll ? " turn-new" : "";
+      if (role === 'user') {
+        wrapper.className = "bubble-user rounded-xl p-3.5 ml-6 shadow-sm relative group" + enterClass;
+      } else if (role === 'assistant') {
+        wrapper.className = "bubble-ai rounded-xl p-4 shadow-sm space-y-2.5 relative group" + enterClass;
+      } else {
+        wrapper.className = "bubble-error rounded-xl p-3 shadow-sm text-[#e0a89f] text-[13px] relative group" + enterClass;
+      }
+
+      let actionsHtml = '';
+      const isChapterClosing = text.includes("CONTINUITY STATE") || text.includes("FIN DEL CAPÍTULO") || text.includes("═ CONTINUITY");
+
+      if (role === 'assistant' && isChapterClosing) {
+        actionsHtml = `
+          <div class="pt-2.5 mt-2 border-t border-[color:var(--seam)] flex justify-end gap-2 flex-wrap">
+            <button onclick="downloadCompleteSession()" class="flex items-center gap-1.5 bg-[color:var(--bark)] hover:bg-[color:var(--bark-deep)] text-[color:var(--manila)] text-[12px] px-2.5 py-1.5 rounded-md border border-[color:var(--seam)] transition">
+              ${ICON_DOWNLOAD} Descargar .txt
+            </button>
+            <button onclick="autoArchiveChapter(getLatestAssistantBlock())" class="flex items-center gap-1.5 bg-[color:var(--moss)]/15 hover:bg-[color:var(--moss)]/25 text-[color:var(--moss)] text-[12px] px-2.5 py-1.5 rounded-md border border-[color:var(--moss)]/40 transition font-medium">
+              ${ICON_STAMP} Archivar capítulo
+            </button>
+          </div>
+        `;
+      }
+
+      let warningsHtml = '';
+      if (role === 'assistant' && warnings && warnings.length > 0) {
+        const items = warnings.map(w => `<li class="text-[12px] text-[#d4a44f] leading-snug">${w}</li>`).join('');
+        warningsHtml = `
+          <details class="mt-1">
+            <summary class="text-[11px] text-[#d4a44f]/85 font-medium">Revisar estilo (${warnings.length})</summary>
+            <ul class="mt-1.5 space-y-1 pl-2.5 border-l border-[#8a6a2a]/40 ml-1">${items}</ul>
+          </details>
+        `;
+      }
+
+      const roleColor = role === 'user' ? 'text-[color:var(--rust)]' : (role === 'error' ? 'text-[#e0a89f]' : 'text-[color:var(--rust)]/90');
+
+      wrapper.innerHTML = `
+        <div class="mb-1">
+          <span class="text-[12px] font-semibold ${roleColor}">${sender}</span>
+        </div>
+        <div class="msg-sticky-rail">
+          <div class="msg-actions-pill">
+            ${role === 'user' ? `
+            <button onclick="startEditMessage(${idx})" title="Editar y regenerar" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--rust)] rounded-full">
+              ${ICON_EDIT}
+            </button>` : ''}
+            <button onclick="copyMessage(${idx})" title="Copiar texto" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[color:var(--manila)] rounded-full">
+              ${ICON_COPY}
+            </button>
+            <button onclick="deleteMessage(${idx})" title="Descartar turno" class="p-1.5 text-[color:var(--manila-dim)] hover:text-[#c96a5a] rounded-full">
+              ${ICON_CUT}
+            </button>
+          </div>
+        </div>
+        <div id="msg-text-${idx}" class="text-[15px] text-[color:var(--manila)] prose-font leading-relaxed space-y-3">${formatProse(text)}</div>
+        ${warningsHtml}
+        ${actionsHtml}
+      `;
+      container.appendChild(wrapper);
+      if (role === 'assistant' && scroll) {
+        // Máquina de escribir: la prosa fluye párrafo por párrafo,
+        // con el cursor parpadeando al final mientras 'escribe'.
+        const textDiv = document.getElementById('msg-text-' + idx);
+        if (textDiv) {
+          const blocks = Array.from(textDiv.children);
+          blocks.forEach((el, i) => {
+            el.classList.add('tw-p');
+            el.style.animationDelay = (i * 0.13).toFixed(2) + 's';
+          });
+          const cursor = document.createElement('span');
+          cursor.className = 'typewriter-cursor';
+          textDiv.appendChild(cursor);
+          setTimeout(() => cursor.remove(), blocks.length * 130 + 700);
+        }
+      }
+      if (scroll) {
+        if (role === 'assistant') {
+          // El mensaje nuevo de la IA se acomoda arriba, para empezar a leer
+          // desde el principio en vez de que te avienten hasta el final.
+          const targetTop = Math.max(wrapper.offsetTop - 8, 0);
+          container.scrollTo({ top: targetTop, behavior: 'smooth' });
+        } else {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+      }
+    }
+
+    function startEditMessage(idx) {
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      const original = sessionHistory[idx].text;
+
+      // Guarda el HTML con formato para poder restaurarlo si cancela.
+      textDiv.dataset.formattedBackup = textDiv.innerHTML;
+
+      textDiv.innerText = original; // texto plano, sin formato de diálogo/capítulo mientras edita
+      textDiv.contentEditable = "true";
+      textDiv.classList.add('msg-editing');
+      textDiv.oninput = () => autoGrow(textDiv);
+      autoGrow(textDiv);
+      textDiv.focus();
+
+      // Mueve el cursor al final del texto.
+      const range = document.createRange();
+      range.selectNodeContents(textDiv);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      // Botones de confirmar/cancelar, justo debajo del mismo recuadro.
+      const controls = document.createElement('div');
+      controls.id = `msg-edit-controls-${idx}`;
+      controls.className = "flex justify-end gap-2 mt-1.5";
+      controls.innerHTML = `
+        <button onclick="cancelEditMessage(${idx})" class="text-[12px] text-[color:var(--manila-dim)] px-2 py-1">Cancelar</button>
+        <button onclick="confirmEditMessage(${idx})" class="text-[12px] bg-[color:var(--rust)] text-[color:var(--bark)] font-semibold px-3 py-1 rounded-md">Guardar y regenerar</button>
+      `;
+      textDiv.insertAdjacentElement('afterend', controls);
+    }
+
+    function cancelEditMessage(idx) {
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      textDiv.contentEditable = "false";
+      textDiv.classList.remove('msg-editing');
+      textDiv.style.maxHeight = '';
+      textDiv.innerHTML = textDiv.dataset.formattedBackup || formatProse(sessionHistory[idx].text);
+      const controls = document.getElementById(`msg-edit-controls-${idx}`);
+      if (controls) controls.remove();
+    }
+
+    async function confirmEditMessage(idx) {
+      const textDiv = document.getElementById(`msg-text-${idx}`);
+      const newText = textDiv.innerText.trim();
+      const controls = document.getElementById(`msg-edit-controls-${idx}`);
+      if (!newText) return;
+      if (!confirm("Esto descarta todo lo escrito después de este mensaje y genera una respuesta nueva. ¿Continuar?")) return;
+      if (controls) controls.remove();
+
+      // 1) Recortar la sesión de la UI: todo lo de antes de idx se queda, el resto se va.
+      sessionHistory = sessionHistory.slice(0, idx);
+
+      // 2) Reconstruir el historial real que el servidor usa para generar, en el mismo formato.
+      const backendHistory = sessionHistory
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.text }));
+
+      try {
+        await fetch('/api/history/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history: backendHistory })
+        });
+      } catch (e) {
+        showToast("No se pudo sincronizar el historial con el servidor.", true);
+        return;
+      }
+
+      renderAllHistory();
+      appendMessage("Tú", newText, "user");
+      await submitUserMessage(newText);
+    }
+
+    function getLatestAssistantBlock() {
+      for (let i = sessionHistory.length - 1; i >= 0; i--) {
+        if (sessionHistory[i].role === 'assistant') {
+          return sessionHistory[i].text;
+        }
+      }
+      return "";
+    }
+
+    function downloadCompleteSession() {
+      const fullProse = sessionHistory
+        .filter(m => m.role === 'assistant')
+        .map(m => m.text)
+        .join("\n\n---\n\n");
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `Cedar_Creek_Capitulo_${timestamp}.txt`;
+      const blob = new Blob([fullProse], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function fireStampAnimation() {
+      const overlay = document.getElementById('stamp-overlay');
+      overlay.classList.add('firing');
+      setTimeout(() => overlay.classList.remove('firing'), 750);
+    }
+
+    async function autoArchiveChapter(content) {
+      if (!ghToken) {
+        toggleConfigModal();
+        return showToast("Configura tu GitHub Token en Configuración.", true);
+      }
+
+      const chapterNum = prompt("Número del capítulo a archivar:", "27");
+      if (!chapterNum) return;
+
+      if (!confirm(`¿Archivar Capítulo ${chapterNum} en GitHub y actualizar Continuidad?`)) return;
+
+      try {
+        const res = await fetch('/api/auto-close-chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            github_token: ghToken,
+            repo_owner: ghOwner,
+            repo_name: ghRepo,
+            chapter_num: chapterNum,
+            full_text: content,
+            api_key: savedKey,
+            model: getSelectedModel()
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          fireStampAnimation();
+          haptic([40, 60, 40]); // ta-ta: sello estampado
+          showToast("Archivado con éxito.");
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          showToast("Error: " + data.detail, true);
+        }
+      } catch (err) {
+        showToast("Fallo de conexión: " + err.message, true);
+      }
+    }
+  </script>
+</body>
+</html>
